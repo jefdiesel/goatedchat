@@ -28,6 +28,7 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
       setContent('');
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
+        textareaRef.current.focus();
       }
     } catch (err: any) {
       console.error('Failed to send message:', err);
