@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
     const publicUrl = getCdnUrl(key);
 
     return NextResponse.json({ publicUrl, key });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const message = error?.message || 'Unknown error';
+    return NextResponse.json({ error: `Upload failed: ${message}` }, { status: 500 });
   }
 }
