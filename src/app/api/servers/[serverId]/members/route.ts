@@ -36,7 +36,7 @@ export async function GET(
         nickname,
         joined_at,
         user_id,
-        users (
+        user:users!user_id (
           id,
           wallet_address,
           ethscription_name,
@@ -76,7 +76,7 @@ export async function GET(
       nickname: m.nickname,
       joined_at: m.joined_at,
       is_owner: m.user_id === server?.owner_id,
-      user: m.users,
+      user: m.user,
       roles: m.member_roles?.map((mr: any) => mr.roles).filter(Boolean) || [],
     })) || [];
 
