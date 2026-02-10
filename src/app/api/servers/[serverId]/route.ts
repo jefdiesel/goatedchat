@@ -84,13 +84,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
     }
 
+    // Build update object with only provided fields
+    const updateData: Record<string, string | null> = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.icon_url !== undefined) updateData.icon_url = updates.icon_url;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.website_url !== undefined) updateData.website_url = updates.website_url;
+
     // Update server
     const { data: updated, error: updateError } = await supabase
       .from('servers')
-      .update({
-        name: updates.name,
-        icon_url: updates.icon_url,
-      })
+      .update(updateData)
       .eq('id', serverId)
       .select()
       .single();

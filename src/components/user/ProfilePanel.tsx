@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
-export default function ProfilePage() {
-  const router = useRouter();
-  const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
+interface ProfilePanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
+  const { user, refreshUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [displayName, setDisplayName] = useState('');
@@ -34,18 +37,16 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-zinc-600 border-t-[#c3ff00] rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // Reset on close
+  useEffect(() => {
+    if (!isOpen) {
+      setError('');
+      setSuccess('');
+      setAvatarFile(null);
+    }
+  }, [isOpen]);
 
-  if (!isAuthenticated || !user) {
-    router.push('/');
-    return null;
-  }
+  if (!user) return null;
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,7 +72,6 @@ export default function ProfilePage() {
       if (avatarFile) {
         const formData = new FormData();
         formData.append('file', avatarFile);
-        formData.append('type', 'avatar');
 
         const uploadRes = await fetch('/api/upload', {
           method: 'POST',
@@ -80,7 +80,7 @@ export default function ProfilePage() {
 
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
-          avatarUrl = uploadData.url;
+          avatarUrl = uploadData.publicUrl;
         }
       }
 
@@ -103,8 +103,9 @@ export default function ProfilePage() {
         throw new Error(data.error || 'Failed to update profile');
       }
 
-      setSuccess('Profile updated successfully!');
+      setSuccess('Profile updated!');
       await refreshUser();
+      setTimeout(() => setSuccess(''), 2000);
     } catch (err: any) {
       setError(err?.message || 'Failed to save');
     } finally {
@@ -115,19 +116,45 @@ export default function ProfilePage() {
   const walletDisplay = `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`;
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8">
-      <div className="max-w-md w-full">
-        <h1 className="text-2xl font-bold mb-6">Profile Settings</h1>
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40"
+          onClick={onClose}
+        />
+      )}
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-6">
+      {/* Panel */}
+      <div
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-50 transform transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+          <h2 className="text-xl font-bold">Profile Settings</h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto h-[calc(100%-73px)] space-y-6">
           {/* Avatar */}
           <div className="flex items-center gap-4">
             <div
               onClick={() => fileInputRef.current?.click()}
               className="w-20 h-20 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group"
+              style={{ imageRendering: 'pixelated' }}
             >
               {avatarPreview ? (
-                <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
               ) : (
                 <span className="text-2xl font-semibold text-zinc-400">
                   {(displayName || walletDisplay).slice(0, 2).toUpperCase()}
@@ -156,7 +183,7 @@ export default function ProfilePage() {
           {/* Wallet Address (read-only) */}
           <div>
             <label className="block text-sm font-medium mb-1.5">Wallet Address</label>
-            <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400">
+            <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 font-mono">
               {user.wallet_address}
             </div>
           </div>
@@ -168,7 +195,6 @@ export default function ProfilePage() {
               <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-[#c3ff00]">
                 {user.ethscription_name}
               </div>
-              <p className="text-xs text-zinc-500 mt-1">Resolved from your wallet</p>
             </div>
           )}
 
@@ -215,7 +241,7 @@ export default function ProfilePage() {
               <input
                 value={discordHandle}
                 onChange={e => setDiscordHandle(e.target.value)}
-                placeholder="username#0000 or username"
+                placeholder="username"
                 className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-[#c3ff00]"
               />
             </div>
@@ -240,16 +266,11 @@ export default function ProfilePage() {
           {success && <p className="text-sm text-green-400">{success}</p>}
 
           {/* Save button */}
-          <div className="flex gap-3">
-            <Button onClick={() => router.push('/servers')} variant="ghost">
-              Back to Servers
-            </Button>
-            <Button onClick={handleSave} loading={saving} className="flex-1">
-              Save Changes
-            </Button>
-          </div>
+          <Button onClick={handleSave} loading={saving} className="w-full">
+            Save Changes
+          </Button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

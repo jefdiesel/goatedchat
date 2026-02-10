@@ -8,6 +8,8 @@ export interface Server {
   owner_id: string;
   invite_code: string;
   icon_url: string | null;
+  description: string | null;
+  website_url: string | null;
   created_at: string;
   is_owner?: boolean;
   is_admin?: boolean;

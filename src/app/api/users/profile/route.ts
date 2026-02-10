@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { display_name, bio, avatar_url } = await request.json();
+    const { display_name, bio, avatar_url, twitter_handle, discord_handle, ens_name, default_server_id } = await request.json();
     const supabase = getSupabaseAdmin();
 
     const updates: Record<string, any> = {};
@@ -50,6 +50,20 @@ export async function PATCH(request: NextRequest) {
     }
     if (avatar_url !== undefined) {
       updates.avatar_url = avatar_url;
+    }
+    if (twitter_handle !== undefined) {
+      // Strip @ if provided
+      updates.twitter_handle = twitter_handle?.replace(/^@/, '') || null;
+    }
+    if (discord_handle !== undefined) {
+      updates.discord_handle = discord_handle || null;
+    }
+    if (ens_name !== undefined) {
+      // Ensure .eth suffix
+      updates.ens_name = ens_name?.endsWith('.eth') ? ens_name : (ens_name ? `${ens_name}.eth` : null);
+    }
+    if (default_server_id !== undefined) {
+      updates.default_server_id = default_server_id || null;
     }
 
     if (Object.keys(updates).length === 0) {

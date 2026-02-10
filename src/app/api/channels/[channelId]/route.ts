@@ -95,15 +95,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'No permission' }, { status: 403 });
     }
 
+    // Build update object with only provided fields
+    const updateData: Record<string, unknown> = {};
+    if (updates.name !== undefined) updateData.name = updates.name.trim().toLowerCase().replace(/\s+/g, '-');
+    if (updates.position !== undefined) updateData.position = updates.position;
+    if (updates.is_private !== undefined) updateData.is_private = updates.is_private;
+    if (updates.parent_id !== undefined) updateData.parent_id = updates.parent_id;
+    if (updates.icon_url !== undefined) updateData.icon_url = updates.icon_url;
+
     // Update channel
     const { data: updated, error: updateError } = await supabase
       .from('channels')
-      .update({
-        name: updates.name?.trim().toLowerCase().replace(/\s+/g, '-'),
-        position: updates.position,
-        is_private: updates.is_private,
-        parent_id: updates.parent_id,
-      })
+      .update(updateData)
       .eq('id', channelId)
       .select()
       .single();

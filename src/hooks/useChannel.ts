@@ -10,6 +10,7 @@ export interface Channel {
   position: number;
   is_private: boolean;
   parent_id: string | null;
+  icon_url: string | null;
   created_at: string;
 }
 

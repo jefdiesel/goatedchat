@@ -11,6 +11,10 @@ export interface User {
   avatar_url: string | null;
   bio: string | null;
   status: 'online' | 'offline' | 'idle' | 'dnd';
+  twitter_handle: string | null;
+  discord_handle: string | null;
+  ens_name: string | null;
+  default_server_id: string | null;
 }
 
 interface AuthState {

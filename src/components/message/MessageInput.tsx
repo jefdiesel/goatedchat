@@ -7,7 +7,7 @@ interface MessageInputProps {
   onSend: (content: string, reply_to_id?: string) => Promise<any>;
 }
 
-const EMOJI_LIST = ['😀', '😂', '🥲', '😍', '🤔', '😎', '🔥', '❤️', '👍', '👎', '👀', '🎉', '💀', '🙏', '💯', '✨'];
+const EMOJI_LIST = ['🤙', '😀', '😂', '🥲', '😍', '🤔', '😎', '🔥', '❤️', '👎', '👀', '🎉', '💀', '🙏', '💯', '✨'];
 
 export function MessageInput({ channelId, onSend }: MessageInputProps) {
   const [content, setContent] = useState('');
@@ -149,13 +149,13 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
 
           {/* Emoji picker dropdown */}
           {showEmoji && (
-            <div className="absolute bottom-full right-0 mb-2 p-2 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl">
-              <div className="grid grid-cols-8 gap-1">
+            <div className="absolute bottom-full right-0 mb-2 p-3 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50">
+              <div className="grid grid-cols-4 gap-2" style={{ width: '160px' }}>
                 {EMOJI_LIST.map(emoji => (
                   <button
                     key={emoji}
                     onClick={() => insertEmoji(emoji)}
-                    className="w-8 h-8 flex items-center justify-center hover:bg-zinc-700 rounded text-lg"
+                    className="w-9 h-9 flex items-center justify-center hover:bg-zinc-700 rounded text-xl"
                   >
                     {emoji}
                   </button>

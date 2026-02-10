@@ -51,7 +51,11 @@ export async function GET(
           id,
           wallet_address,
           ethscription_name,
-          avatar_url
+          avatar_url,
+          bio,
+          twitter_handle,
+          discord_handle,
+          ens_name
         ),
         attachments:message_attachments (*),
         reactions:message_reactions (
@@ -150,7 +154,11 @@ export async function POST(
           id,
           wallet_address,
           ethscription_name,
-          avatar_url
+          avatar_url,
+          bio,
+          twitter_handle,
+          discord_handle,
+          ens_name
         )
       `)
       .single();

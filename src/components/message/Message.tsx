@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/hooks/useAuth';
 import { Message as MessageType } from '@/hooks/useMessages';
 import { formatDistanceToNow } from '@/lib/utils';
@@ -13,7 +14,7 @@ interface MessageProps {
   onReact: (messageId: string, emoji: string) => Promise<void>;
 }
 
-const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💯'];
+const REACTION_EMOJIS = ['🤙', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💯'];
 
 export function Message({ message, isGrouped, onEdit, onDelete, onReact }: MessageProps) {
   const { user } = useAuth();
@@ -126,12 +127,41 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
             </div>
           </div>
         ) : (
-          <p className="text-zinc-100 break-words whitespace-pre-wrap">
-            {message.content}
+          <div className="text-zinc-100 break-words whitespace-pre-wrap">
+            <ReactMarkdown
+              components={{
+                img: (props) => {
+                  const imgSrc = typeof props.src === 'string' ? props.src : '';
+                  if (!imgSrc) return null;
+                  return (
+                    <a href={imgSrc} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={imgSrc}
+                        alt={props.alt || 'image'}
+                        className="max-w-sm max-h-80 rounded-lg mt-1"
+                      />
+                    </a>
+                  );
+                },
+                a: (props) => (
+                  <a
+                    href={props.href || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#c3ff00] hover:underline"
+                  >
+                    {props.children}
+                  </a>
+                ),
+                p: ({ children }) => <span>{children}</span>,
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
             {message.edited_at && (
               <span className="text-xs text-zinc-500 ml-1">(edited)</span>
             )}
-          </p>
+          </div>
         )}
 
         {/* Attachments */}

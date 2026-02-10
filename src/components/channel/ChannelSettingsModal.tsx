@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
@@ -15,14 +15,64 @@ interface ChannelSettingsModalProps {
   onUpdate: () => void;
 }
 
+// Convert ethscription tx ID to content URL
+const getEthscriptionUrl = (txId: string) => {
+  const cleanId = txId.trim().toLowerCase();
+  if (cleanId.startsWith('0x') && cleanId.length === 66) {
+    return `https://api.ethscriptions.com/v2/ethscriptions/${cleanId}/content`;
+  }
+  return null;
+};
+
 export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpdate }: ChannelSettingsModalProps) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(channel.name);
   const [isPrivate, setIsPrivate] = useState(channel.is_private);
+  const [iconPreview, setIconPreview] = useState<string | null>(channel.icon_url);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [ethscriptionId, setEthscriptionId] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Reset form when channel changes
+  useEffect(() => {
+    setName(channel.name);
+    setIsPrivate(channel.is_private);
+    setIconPreview(channel.icon_url);
+    setIconFile(null);
+    setEthscriptionId('');
+  }, [channel]);
+
+  const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIconFile(file);
+      setEthscriptionId('');
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIconPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEthscriptionChange = (value: string) => {
+    setEthscriptionId(value);
+    const url = getEthscriptionUrl(value);
+    if (url) {
+      setIconPreview(url);
+      setIconFile(null);
+    }
+  };
+
+  const clearIcon = () => {
+    setIconPreview(null);
+    setIconFile(null);
+    setEthscriptionId('');
+  };
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -30,12 +80,42 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
     setError('');
 
     try {
+      let iconUrl = channel.icon_url;
+
+      // If ethscription ID provided, use that
+      if (ethscriptionId) {
+        const ethUrl = getEthscriptionUrl(ethscriptionId);
+        if (ethUrl) {
+          iconUrl = ethUrl;
+        }
+      }
+      // Otherwise upload file if provided
+      else if (iconFile) {
+        const formData = new FormData();
+        formData.append('file', iconFile);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          iconUrl = uploadData.publicUrl;
+        }
+      }
+      // If cleared
+      else if (!iconPreview) {
+        iconUrl = null;
+      }
+
       const res = await fetch(`/api/channels/${channel.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim().toLowerCase().replace(/\s+/g, '-'),
           is_private: isPrivate,
+          icon_url: iconUrl,
         }),
       });
 
@@ -80,6 +160,55 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Channel Settings">
       <div className="space-y-6">
+        {/* Channel Icon */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Channel Icon</label>
+          <div className="flex items-start gap-4">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="w-16 h-16 rounded-xl bg-zinc-700 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group flex-shrink-0"
+              style={{ imageRendering: 'pixelated' }}
+            >
+              {iconPreview ? (
+                <img src={iconPreview} alt="Icon" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+              ) : (
+                <span className="text-xl text-zinc-400">#</span>
+              )}
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleIconChange}
+              className="hidden"
+            />
+            <div className="flex-1 space-y-2">
+              <input
+                type="text"
+                value={ethscriptionId}
+                onChange={e => handleEthscriptionChange(e.target.value)}
+                placeholder="Or paste ethscription tx ID (0x...)"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm font-mono focus:outline-none focus:border-[#c3ff00]"
+              />
+              {iconPreview && (
+                <button
+                  type="button"
+                  onClick={clearIcon}
+                  className="text-xs text-zinc-500 hover:text-red-400"
+                >
+                  Remove icon
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Channel Name */}
         <Input
           label="Channel Name"

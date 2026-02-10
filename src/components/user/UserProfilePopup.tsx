@@ -16,6 +16,9 @@ interface UserProfilePopupProps {
     avatar_url: string | null;
     bio: string | null;
     status?: string;
+    twitter_handle?: string | null;
+    discord_handle?: string | null;
+    ens_name?: string | null;
   };
   onUpdate?: () => void;
 }
@@ -67,7 +70,8 @@ export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfil
         `https://api.ethscriptions.com/v2/ethscriptions?current_owner=${user.wallet_address}&media_type=image&per_page=25&page=${page}`
       );
       const data = await res.json();
-      const images = (data.result || data.ethscriptions || [])
+      const rawResults = data.result || data.ethscriptions || [];
+      const images = rawResults
         .map((e: any) => ({
           tx_hash: e.transaction_hash,
           content_uri: e.content_uri,
@@ -80,7 +84,8 @@ export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfil
       } else {
         setImageEthscriptions(images);
       }
-      setHasMoreImages(images.length === 25);
+      // Check raw API count to determine if more pages exist
+      setHasMoreImages(rawResults.length === 25);
       setImagePage(page);
     } catch (err) {
       console.error('Failed to fetch image ethscriptions:', err);
@@ -263,6 +268,46 @@ export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfil
         {!isEditing && user.bio && (
           <div className="bg-zinc-800 rounded-lg p-3">
             <p className="text-sm text-zinc-300">{user.bio}</p>
+          </div>
+        )}
+
+        {/* Social Links (non-edit view) */}
+        {!isEditing && (user.twitter_handle || user.discord_handle || user.ens_name) && (
+          <div className="flex flex-wrap gap-2 justify-center">
+            {user.twitter_handle && (
+              <a
+                href={`https://x.com/${user.twitter_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                @{user.twitter_handle}
+              </a>
+            )}
+            {user.discord_handle && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 rounded-lg text-sm">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                </svg>
+                {user.discord_handle}
+              </div>
+            )}
+            {user.ens_name && (
+              <a
+                href={`https://app.ens.domains/${user.ens_name}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6.63 6.012c-.11.093-.18.23-.18.388v11.2c0 .158.07.295.18.388l5.37 4.5c.22.185.55.185.77 0l5.37-4.5c.11-.093.18-.23.18-.388V6.4c0-.158-.07-.295-.18-.388l-5.37-4.5a.545.545 0 0 0-.77 0l-5.37 4.5z" />
+                </svg>
+                {user.ens_name}
+              </a>
+            )}
           </div>
         )}
 

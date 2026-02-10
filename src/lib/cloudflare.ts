@@ -25,7 +25,13 @@ export async function uploadFile(
     ContentType: contentType,
   });
 
-  await s3Client.send(command);
+  try {
+    await s3Client.send(command);
+  } catch (error: any) {
+    const code = error?.Code || error?.$metadata?.httpStatusCode || 'unknown';
+    const msg = error?.message || 'S3 upload failed';
+    throw new Error(`R2 error (${code}): ${msg}`);
+  }
 }
 
 export function getCdnUrl(key: string): string {

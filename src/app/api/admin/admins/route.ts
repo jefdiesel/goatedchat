@@ -152,6 +152,64 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PATCH - Update admin role (super_admin only)
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const superAdmin = await checkSuperAdmin(session.userId);
+    if (!superAdmin) {
+      return NextResponse.json({ error: 'Super admin required' }, { status: 403 });
+    }
+
+    const { admin_id, role } = await request.json();
+
+    if (!admin_id || !role) {
+      return NextResponse.json({ error: 'Admin ID and role required' }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    // Get the admin record
+    const { data: adminRecord } = await supabase
+      .from('platform_admins')
+      .select('user_id')
+      .eq('id', admin_id)
+      .single();
+
+    if (!adminRecord) {
+      return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
+    }
+
+    // Update role
+    const { error } = await supabase
+      .from('platform_admins')
+      .update({ role })
+      .eq('id', admin_id);
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update role' }, { status: 500 });
+    }
+
+    // Log action
+    await supabase.from('admin_audit_log').insert({
+      admin_id: session.userId,
+      action: 'update_admin_role',
+      target_type: 'user',
+      target_id: adminRecord.user_id,
+      metadata: { new_role: role },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Update admin role error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 // DELETE - Remove an admin (super_admin only)
 export async function DELETE(request: NextRequest) {
   try {
