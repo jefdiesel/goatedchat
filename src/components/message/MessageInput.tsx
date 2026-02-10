@@ -54,9 +54,14 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleFileSelect called', e.target.files);
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
 
+    console.log('File selected:', file.name, file.type, file.size);
     setUploading(true);
     setError(null);
 
@@ -129,7 +134,11 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
 
         {/* Attachment button */}
         <button
-          onClick={() => fileInputRef.current?.click()}
+          type="button"
+          onClick={() => {
+            console.log('Attachment button clicked, fileInputRef:', fileInputRef.current);
+            fileInputRef.current?.click();
+          }}
           disabled={uploading}
           className="p-2 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
           title="Add attachment"
