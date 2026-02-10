@@ -123,26 +123,16 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
         </div>
       )}
       <div className="flex items-end gap-2 bg-zinc-800 border border-zinc-700 rounded-xl p-2">
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          accept="image/*,video/*,audio/*,.pdf"
-          onChange={handleFileSelect}
-        />
-
-        {/* Attachment button */}
-        <button
-          type="button"
-          onClick={() => {
-            console.log('Attachment button clicked, fileInputRef:', fileInputRef.current);
-            fileInputRef.current?.click();
-          }}
-          disabled={uploading}
-          className="p-2 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
-          title="Add attachment"
-        >
+        {/* File input as label */}
+        <label className="p-2 text-zinc-400 hover:text-white transition-colors cursor-pointer">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*,video/*,audio/*,.pdf"
+            onChange={handleFileSelect}
+            disabled={uploading}
+          />
           {uploading ? (
             <div className="w-5 h-5 border-2 border-zinc-400/30 border-t-zinc-400 rounded-full animate-spin" />
           ) : (
@@ -150,7 +140,7 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           )}
-        </button>
+        </label>
 
         {/* Text input */}
         <textarea
