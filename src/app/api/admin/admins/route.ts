@@ -75,19 +75,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Super admin required' }, { status: 403 });
     }
 
-    const { user_id, role = 'admin' } = await request.json();
-
-    if (!user_id) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
+    const { user_id, wallet_address, role = 'admin' } = await request.json();
 
     const supabase = getSupabaseAdmin();
+
+    let targetUserId = user_id;
+
+    // If wallet_address provided, look up the user
+    if (!targetUserId && wallet_address) {
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .ilike('wallet_address', wallet_address)
+        .single();
+
+      if (!user) {
+        return NextResponse.json({ error: 'User not found with that wallet address' }, { status: 404 });
+      }
+      targetUserId = user.id;
+    }
+
+    if (!targetUserId) {
+      return NextResponse.json({ error: 'User ID or wallet address is required' }, { status: 400 });
+    }
 
     // Check if user exists
     const { data: user } = await supabase
       .from('users')
       .select('id')
-      .eq('id', user_id)
+      .eq('id', targetUserId)
       .single();
 
     if (!user) {
@@ -98,7 +114,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from('platform_admins')
       .select('id')
-      .eq('user_id', user_id)
+      .eq('user_id', targetUserId)
       .single();
 
     if (existing) {
@@ -109,7 +125,7 @@ export async function POST(request: NextRequest) {
     const { data: admin, error } = await supabase
       .from('platform_admins')
       .insert({
-        user_id,
+        user_id: targetUserId,
         role,
         assigned_by: session.userId,
       })
@@ -125,7 +141,7 @@ export async function POST(request: NextRequest) {
       admin_id: session.userId,
       action: 'add_admin',
       target_type: 'user',
-      target_id: user_id,
+      target_id: targetUserId,
       metadata: { role },
     });
 
@@ -149,23 +165,36 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Super admin required' }, { status: 403 });
     }
 
-    const { user_id } = await request.json();
+    // Get admin ID from query params
+    const { searchParams } = new URL(request.url);
+    const adminId = searchParams.get('id');
 
-    if (!user_id) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
-
-    // Can't remove yourself
-    if (user_id === session.userId) {
-      return NextResponse.json({ error: 'Cannot remove yourself' }, { status: 400 });
+    if (!adminId) {
+      return NextResponse.json({ error: 'Admin ID is required' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
 
+    // Get the admin record to check the user_id
+    const { data: adminRecord } = await supabase
+      .from('platform_admins')
+      .select('user_id')
+      .eq('id', adminId)
+      .single();
+
+    if (!adminRecord) {
+      return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
+    }
+
+    // Can't remove yourself
+    if (adminRecord.user_id === session.userId) {
+      return NextResponse.json({ error: 'Cannot remove yourself' }, { status: 400 });
+    }
+
     const { error } = await supabase
       .from('platform_admins')
       .delete()
-      .eq('user_id', user_id);
+      .eq('id', adminId);
 
     if (error) {
       return NextResponse.json({ error: 'Failed to remove admin' }, { status: 500 });
@@ -176,7 +205,7 @@ export async function DELETE(request: NextRequest) {
       admin_id: session.userId,
       action: 'remove_admin',
       target_type: 'user',
-      target_id: user_id,
+      target_id: adminRecord.user_id,
     });
 
     return NextResponse.json({ success: true });

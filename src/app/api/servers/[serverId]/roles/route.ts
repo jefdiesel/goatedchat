@@ -138,3 +138,108 @@ export async function POST(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// PATCH - Update a role
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ serverId: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { serverId } = await params;
+    const { searchParams } = new URL(request.url);
+    const roleId = searchParams.get('id');
+    const body = await request.json();
+    const supabase = getSupabaseAdmin();
+
+    if (!roleId) {
+      return NextResponse.json({ error: 'Role ID required' }, { status: 400 });
+    }
+
+    // Check if user is owner
+    const { data: server } = await supabase
+      .from('servers')
+      .select('owner_id')
+      .eq('id', serverId)
+      .single();
+
+    if (server?.owner_id !== session.userId) {
+      return NextResponse.json({ error: 'Only owner can edit roles' }, { status: 403 });
+    }
+
+    // Update role
+    const { data: role, error } = await supabase
+      .from('roles')
+      .update({
+        name: body.name,
+        color: body.color || null,
+        is_admin: body.is_admin || false,
+      })
+      .eq('id', roleId)
+      .eq('server_id', serverId)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update role' }, { status: 500 });
+    }
+
+    return NextResponse.json({ role });
+  } catch (error) {
+    console.error('Update role error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// DELETE - Delete a role
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ serverId: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { serverId } = await params;
+    const { searchParams } = new URL(request.url);
+    const roleId = searchParams.get('id');
+    const supabase = getSupabaseAdmin();
+
+    if (!roleId) {
+      return NextResponse.json({ error: 'Role ID required' }, { status: 400 });
+    }
+
+    // Check if user is owner
+    const { data: server } = await supabase
+      .from('servers')
+      .select('owner_id')
+      .eq('id', serverId)
+      .single();
+
+    if (server?.owner_id !== session.userId) {
+      return NextResponse.json({ error: 'Only owner can delete roles' }, { status: 403 });
+    }
+
+    // Delete role (cascades to member_roles)
+    const { error } = await supabase
+      .from('roles')
+      .delete()
+      .eq('id', roleId)
+      .eq('server_id', serverId);
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to delete role' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete role error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

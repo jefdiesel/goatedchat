@@ -10,9 +10,10 @@ interface CreateChannelModalProps {
   isOpen: boolean;
   onClose: () => void;
   serverId: string;
+  onCreated?: () => void;
 }
 
-export function CreateChannelModal({ isOpen, onClose, serverId }: CreateChannelModalProps) {
+export function CreateChannelModal({ isOpen, onClose, serverId, onCreated }: CreateChannelModalProps) {
   const { createChannel } = useChannels(serverId);
   const [name, setName] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -38,6 +39,7 @@ export function CreateChannelModal({ isOpen, onClose, serverId }: CreateChannelM
       } : undefined;
 
       await createChannel(name.trim(), 'text', isPrivate, tokenGate);
+      onCreated?.();
       handleClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to create channel');

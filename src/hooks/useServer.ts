@@ -10,6 +10,8 @@ export interface Server {
   icon_url: string | null;
   created_at: string;
   is_owner?: boolean;
+  is_admin?: boolean;
+  can_manage_channels?: boolean;
   nickname?: string;
   joined_at?: string;
 }

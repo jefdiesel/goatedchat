@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/siwe';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getServerPermissions } from '@/lib/permissions';
 
 // GET - Get server details
 export async function GET(
@@ -39,10 +40,15 @@ export async function GET(
       return NextResponse.json({ error: 'Server not found' }, { status: 404 });
     }
 
+    // Get permissions
+    const permissions = await getServerPermissions(session.userId, serverId);
+
     return NextResponse.json({
       server: {
         ...server,
         is_owner: server.owner_id === session.userId,
+        is_admin: permissions?.isAdmin || false,
+        can_manage_channels: permissions?.canManageChannels || false,
         nickname: membership.nickname,
       },
     });

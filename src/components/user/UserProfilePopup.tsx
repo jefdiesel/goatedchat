@@ -25,6 +25,12 @@ interface EthscriptionName {
   tx_hash: string;
 }
 
+interface EthscriptionImage {
+  tx_hash: string;
+  content_uri: string;
+  mimetype: string;
+}
+
 export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfilePopupProps) {
   const { user: currentUser, refreshUser } = useAuth();
   const isOwner = currentUser?.id === user.id;
@@ -35,16 +41,57 @@ export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfil
   const [selectedName, setSelectedName] = useState(user.ethscription_name || '');
   const [pfpTxHash, setPfpTxHash] = useState('');
   const [pfpPreview, setPfpPreview] = useState<string | null>(user.avatar_url);
+  const [loadingPfp, setLoadingPfp] = useState(false);
+  const [pfpError, setPfpError] = useState('');
+  const [pfpSuccess, setPfpSuccess] = useState(false);
+  const [imageEthscriptions, setImageEthscriptions] = useState<EthscriptionImage[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [imagePage, setImagePage] = useState(1);
+  const [hasMoreImages, setHasMoreImages] = useState(false);
   const [bio, setBio] = useState(user.bio || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch ethscription names when editing
+  // Fetch ethscription names and images when editing
   useEffect(() => {
     if (isEditing && isOwner) {
       fetchEthscriptionNames();
+      fetchImageEthscriptions();
     }
   }, [isEditing, isOwner, user.wallet_address]);
+
+  const fetchImageEthscriptions = async (page = 1, append = false) => {
+    setLoadingImages(true);
+    try {
+      const res = await fetch(
+        `https://api.ethscriptions.com/v2/ethscriptions?current_owner=${user.wallet_address}&media_type=image&per_page=25&page=${page}`
+      );
+      const data = await res.json();
+      const images = (data.result || data.ethscriptions || [])
+        .map((e: any) => ({
+          tx_hash: e.transaction_hash,
+          content_uri: e.content_uri,
+          mimetype: e.mimetype,
+        }))
+        .filter((img: EthscriptionImage) => img.content_uri && img.content_uri.startsWith('data:image/'));
+
+      if (append) {
+        setImageEthscriptions(prev => [...prev, ...images]);
+      } else {
+        setImageEthscriptions(images);
+      }
+      setHasMoreImages(images.length === 25);
+      setImagePage(page);
+    } catch (err) {
+      console.error('Failed to fetch image ethscriptions:', err);
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
+  const loadMoreImages = () => {
+    fetchImageEthscriptions(imagePage + 1, true);
+  };
 
   const fetchEthscriptionNames = async () => {
     setLoadingNames(true);
@@ -91,19 +138,46 @@ export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfil
 
   const handlePfpTxHashChange = async (txHash: string) => {
     setPfpTxHash(txHash);
+    setPfpError('');
+    setPfpSuccess(false);
+
     if (txHash && txHash.length === 66) {
-      // Fetch ethscription data to get content_uri
+      setLoadingPfp(true);
       try {
         const res = await fetch(`https://api.ethscriptions.com/v2/ethscriptions/${txHash}`);
+        if (!res.ok) {
+          setPfpError('Ethscription not found');
+          setLoadingPfp(false);
+          return;
+        }
         const data = await res.json();
         const contentUri = data.result?.content_uri || data.ethscription?.content_uri;
-        if (contentUri) {
+        const mimetype = data.result?.mimetype || data.ethscription?.mimetype || '';
+
+        if (!contentUri) {
+          setPfpError('No content found');
+        } else if (!mimetype.startsWith('image/')) {
+          setPfpError('Not an image ethscription');
+        } else {
           setPfpPreview(contentUri);
+          setPfpSuccess(true);
         }
       } catch (err) {
         console.error('Failed to fetch ethscription:', err);
+        setPfpError('Failed to fetch ethscription');
+      } finally {
+        setLoadingPfp(false);
       }
+    } else if (txHash && txHash.length > 0) {
+      setPfpPreview(user.avatar_url);
     }
+  };
+
+  const selectImageEthscription = (img: EthscriptionImage) => {
+    setPfpTxHash(img.tx_hash);
+    setPfpPreview(img.content_uri);
+    setPfpSuccess(true);
+    setPfpError('');
   };
 
   const handleSave = async () => {
@@ -224,16 +298,77 @@ export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfil
             {/* PFP from Ethscription */}
             <div>
               <label className="block text-sm font-medium mb-1.5">
-                Profile Picture (Ethscription TX Hash)
+                Profile Picture
               </label>
+
+              {/* Image ethscription picker */}
+              {loadingImages ? (
+                <div className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
+                  <div className="w-4 h-4 border-2 border-zinc-600 border-t-[#c3ff00] rounded-full animate-spin" />
+                  Loading your image ethscriptions...
+                </div>
+              ) : imageEthscriptions.length > 0 ? (
+                <div className="mb-3">
+                  <p className="text-xs text-zinc-500 mb-2">Select from your collection:</p>
+                  <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto">
+                    {imageEthscriptions.map(img => (
+                      <button
+                        key={img.tx_hash}
+                        type="button"
+                        onClick={() => selectImageEthscription(img)}
+                        className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors ${
+                          pfpTxHash === img.tx_hash
+                            ? 'border-[#c3ff00]'
+                            : 'border-zinc-700 hover:border-zinc-500'
+                        }`}
+                        style={{ imageRendering: 'pixelated' }}
+                      >
+                        <img
+                          src={img.content_uri}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  {hasMoreImages && (
+                    <button
+                      type="button"
+                      onClick={loadMoreImages}
+                      disabled={loadingImages}
+                      className="mt-2 text-xs text-[#c3ff00] hover:underline disabled:opacity-50"
+                    >
+                      {loadingImages ? 'Loading...' : 'Load more'}
+                    </button>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Or paste tx hash */}
+              <p className="text-xs text-zinc-500 mb-1.5">Or paste a tx hash:</p>
               <Input
                 value={pfpTxHash}
                 onChange={e => handlePfpTxHashChange(e.target.value)}
                 placeholder="0x..."
               />
-              <p className="text-xs text-zinc-500 mt-1">
-                Paste an ethscription transaction hash to use as your PFP
-              </p>
+              {loadingPfp && (
+                <div className="flex items-center gap-2 text-sm text-zinc-400 mt-1">
+                  <div className="w-3 h-3 border-2 border-zinc-600 border-t-[#c3ff00] rounded-full animate-spin" />
+                  Loading ethscription...
+                </div>
+              )}
+              {pfpError && (
+                <p className="text-xs text-red-400 mt-1">{pfpError}</p>
+              )}
+              {pfpSuccess && !loadingPfp && (
+                <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Image loaded!
+                </p>
+              )}
             </div>
 
             {/* Bio */}
@@ -263,7 +398,7 @@ export function UserProfilePopup({ isOpen, onClose, user, onUpdate }: UserProfil
               <Button variant="ghost" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} loading={saving} className="flex-1">
+              <Button onClick={handleSave} loading={saving} disabled={loadingPfp} className="flex-1">
                 Save Changes
               </Button>
             </>
