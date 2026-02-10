@@ -27,9 +27,10 @@ export function ConnectButton() {
     setError(null);
     try {
       await signIn();
+      // Reload to sync auth state across all components
+      window.location.reload();
     } catch (err: any) {
       setError(err?.message || 'Failed to sign in');
-    } finally {
       setSigningIn(false);
     }
   };
