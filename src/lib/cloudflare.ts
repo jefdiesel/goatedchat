@@ -8,6 +8,7 @@ const s3Client = new S3Client({
     accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID?.trim() || '',
     secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY?.trim() || '',
   },
+  forcePathStyle: true,
 });
 
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET?.trim() || 'gated-chat';
