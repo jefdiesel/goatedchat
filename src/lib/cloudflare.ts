@@ -1,5 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const s3Client = new S3Client({
   region: 'auto',
@@ -14,35 +13,19 @@ const s3Client = new S3Client({
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET?.trim() || 'gated-chat';
 const CDN_URL = process.env.CLOUDFLARE_CDN_URL?.trim() || '';
 
-export async function generateUploadUrl(
+export async function uploadFile(
   key: string,
-  contentType: string,
-  expiresIn = 3600
-): Promise<string> {
+  body: Buffer,
+  contentType: string
+): Promise<void> {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
+    Body: body,
     ContentType: contentType,
   });
 
-  return getSignedUrl(s3Client, command, { expiresIn });
-}
-
-export async function generateDownloadUrl(
-  key: string,
-  expiresIn = 3600
-): Promise<string> {
-  // If CDN is configured, use it for public files
-  if (CDN_URL) {
-    return `${CDN_URL}/${key}`;
-  }
-
-  const command = new GetObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-  });
-
-  return getSignedUrl(s3Client, command, { expiresIn });
+  await s3Client.send(command);
 }
 
 export function getCdnUrl(key: string): string {

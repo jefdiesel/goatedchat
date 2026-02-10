@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/siwe';
-import { generateUploadUrl, generateKey, getCdnUrl } from '@/lib/cloudflare';
+import { uploadFile, generateKey, getCdnUrl } from '@/lib/cloudflare';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -15,7 +15,7 @@ const ALLOWED_TYPES = [
   'application/pdf',
 ];
 
-// POST - Get a signed upload URL
+// POST - Upload file directly through server
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -23,31 +23,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { filename, contentType, size } = await request.json();
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
 
-    if (!filename || !contentType) {
-      return NextResponse.json({ error: 'Missing filename or content type' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (size && size > MAX_FILE_SIZE) {
+    if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 });
     }
 
-    if (!ALLOWED_TYPES.includes(contentType)) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
     }
 
-    const key = generateKey(session.userId, filename);
-    const uploadUrl = await generateUploadUrl(key, contentType);
+    const key = generateKey(session.userId, file.name);
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    await uploadFile(key, buffer, file.type);
     const publicUrl = getCdnUrl(key);
 
-    return NextResponse.json({
-      uploadUrl,
-      publicUrl,
-      key,
-    });
+    return NextResponse.json({ publicUrl, key });
   } catch (error) {
-    console.error('Upload URL error:', error);
+    console.error('Upload error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

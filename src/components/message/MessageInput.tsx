@@ -54,46 +54,27 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleFileSelect called', e.target.files);
     const file = e.target.files?.[0];
-    if (!file) {
-      console.log('No file selected');
-      return;
-    }
+    if (!file) return;
 
-    console.log('File selected:', file.name, file.type, file.size);
     setUploading(true);
     setError(null);
 
     try {
-      // Get signed upload URL
+      const formData = new FormData();
+      formData.append('file', file);
+
       const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          size: file.size,
-        }),
+        body: formData,
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to get upload URL');
+        throw new Error(data.error || 'Upload failed');
       }
 
-      const { uploadUrl, publicUrl } = await res.json();
-
-      // Upload to R2
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload file');
-      }
+      const { publicUrl } = await res.json();
 
       // Send message with the file URL
       const isImage = file.type.startsWith('image/');
