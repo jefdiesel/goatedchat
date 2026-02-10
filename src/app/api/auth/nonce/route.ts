@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { nanoid } from 'nanoid';
+import { generateNonce } from 'siwe';
 
 export async function GET() {
-  const nonce = nanoid();
+  const nonce = generateNonce();
   return NextResponse.json({ nonce });
 }

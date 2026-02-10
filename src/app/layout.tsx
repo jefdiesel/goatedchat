@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Gated Chat',
+  title: 'Goat Chat',
   description: 'Real-time messaging with wallet-based auth and token gating',
 };
 

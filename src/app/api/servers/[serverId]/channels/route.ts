@@ -58,7 +58,7 @@ export async function POST(
     }
 
     const { serverId } = await params;
-    const { name, type = 'text', is_private = false, parent_id } = await request.json();
+    const { name, type = 'text', is_private = false, parent_id, token_gate } = await request.json();
 
     if (!name || name.trim().length === 0) {
       return NextResponse.json({ error: 'Channel name is required' }, { status: 400 });
@@ -132,6 +132,22 @@ export async function POST(
     if (channelError) {
       console.error('Error creating channel:', channelError);
       return NextResponse.json({ error: 'Failed to create channel' }, { status: 500 });
+    }
+
+    // Create token gate if provided
+    if (token_gate && token_gate.contract_address) {
+      const { error: gateError } = await supabase
+        .from('channel_token_gates')
+        .insert({
+          channel_id: channel.id,
+          contract_address: token_gate.contract_address,
+          chain: token_gate.chain || 'eth',
+          min_balance: token_gate.min_balance || 1,
+        });
+
+      if (gateError) {
+        console.error('Error creating token gate:', gateError);
+      }
     }
 
     return NextResponse.json({ channel });

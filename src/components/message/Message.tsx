@@ -20,8 +20,10 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
   const [showActions, setShowActions] = useState(false);
 
   const isAuthor = user?.id === message.author_id;
-  const displayName = message.author.ethscription_name ||
-    `${message.author.wallet_address.slice(0, 6)}...${message.author.wallet_address.slice(-4)}`;
+  const displayName = message.author?.ethscription_name ||
+    (message.author?.wallet_address
+      ? `${message.author.wallet_address.slice(0, 6)}...${message.author.wallet_address.slice(-4)}`
+      : 'Unknown');
 
   const handleSaveEdit = async () => {
     if (editContent.trim() !== message.content) {
@@ -63,12 +65,13 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
       {isGrouped ? (
         <div className="w-10 flex-shrink-0" />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
-          {message.author.avatar_url ? (
+        <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ imageRendering: 'pixelated' }}>
+          {message.author?.avatar_url ? (
             <img
               src={message.author.avatar_url}
               alt={displayName}
               className="w-full h-full object-cover"
+              style={{ imageRendering: 'pixelated' }}
             />
           ) : (
             <span className="text-sm font-semibold text-zinc-400">
@@ -91,12 +94,14 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
           </div>
         )}
 
-        {/* Reply preview */}
-        {message.reply_to && (
+        {/* Reply preview - only show if reply_to has actual content */}
+        {message.reply_to && message.reply_to.id && message.reply_to.content && (
           <div className="flex items-center gap-2 text-sm text-zinc-500 mb-1 pl-2 border-l-2 border-zinc-700">
             <span className="font-medium">
-              {message.reply_to.author.ethscription_name ||
-                `${message.reply_to.author.wallet_address.slice(0, 6)}...`}
+              {message.reply_to.author?.ethscription_name ||
+                (message.reply_to.author?.wallet_address
+                  ? `${message.reply_to.author.wallet_address.slice(0, 6)}...`
+                  : 'Unknown')}
             </span>
             <span className="truncate">{message.reply_to.content}</span>
           </div>

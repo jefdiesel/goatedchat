@@ -41,6 +41,7 @@ export async function GET(
           wallet_address,
           ethscription_name,
           avatar_url,
+          bio,
           status
         ),
         member_roles (

@@ -18,7 +18,7 @@ export default function ServersPage() {
     <AppShell>
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="max-w-2xl w-full text-center">
-          <h1 className="text-3xl font-bold mb-2">Welcome to Gated Chat</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome to Goat Chat</h1>
           <p className="text-zinc-400 mb-8">
             Select a server from the sidebar or create a new one
           </p>

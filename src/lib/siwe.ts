@@ -61,7 +61,7 @@ export function createSiweMessage(address: string, nonce: string, chainId: numbe
   const message = new SiweMessage({
     domain: typeof window !== 'undefined' ? window.location.host : 'localhost:3000',
     address,
-    statement: 'Sign in to Gated Chat',
+    statement: 'Sign in to Goat Chat',
     uri: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
     version: '1',
     chainId,

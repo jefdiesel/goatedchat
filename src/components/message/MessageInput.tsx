@@ -1,30 +1,32 @@
 'use client';
 
 import { useState, useRef, KeyboardEvent } from 'react';
-import { useMessages } from '@/hooks/useMessages';
 
 interface MessageInputProps {
   channelId: string;
+  onSend: (content: string, reply_to_id?: string) => Promise<any>;
 }
 
-export function MessageInput({ channelId }: MessageInputProps) {
-  const { sendMessage } = useMessages(channelId);
+export function MessageInput({ channelId, onSend }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = async () => {
     if (!content.trim() || sending) return;
 
     setSending(true);
+    setError(null);
     try {
-      await sendMessage(content.trim());
+      await onSend(content.trim());
       setContent('');
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
-    } catch (error) {
-      console.error('Failed to send message:', error);
+    } catch (err: any) {
+      console.error('Failed to send message:', err);
+      setError(err?.message || 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -48,6 +50,11 @@ export function MessageInput({ channelId }: MessageInputProps) {
 
   return (
     <div className="px-4 pb-4">
+      {error && (
+        <div className="mb-2 px-3 py-2 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400">
+          {error}
+        </div>
+      )}
       <div className="flex items-end gap-2 bg-zinc-800 border border-zinc-700 rounded-xl p-2">
         {/* Attachment button */}
         <button

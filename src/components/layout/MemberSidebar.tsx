@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Spinner } from '@/components/ui/Spinner';
+import { UserProfilePopup } from '@/components/user/UserProfilePopup';
 
 interface Member {
   id: string;
@@ -13,6 +14,7 @@ interface Member {
     wallet_address: string;
     ethscription_name: string | null;
     avatar_url: string | null;
+    bio: string | null;
     status: 'online' | 'offline' | 'idle' | 'dnd';
   };
   roles: {
@@ -30,6 +32,7 @@ interface MemberSidebarProps {
 export function MemberSidebar({ serverId }: MemberSidebarProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   useEffect(() => {
     async function fetchMembers() {
@@ -47,9 +50,10 @@ export function MemberSidebar({ serverId }: MemberSidebarProps) {
     fetchMembers();
   }, [serverId]);
 
-  // Group members by status
-  const onlineMembers = members.filter(m => m.user.status === 'online' || m.user.status === 'idle' || m.user.status === 'dnd');
-  const offlineMembers = members.filter(m => m.user.status === 'offline');
+  // Filter out members with missing user data and group by status
+  const validMembers = members.filter(m => m.user);
+  const onlineMembers = validMembers.filter(m => m.user.status === 'online' || m.user.status === 'idle' || m.user.status === 'dnd');
+  const offlineMembers = validMembers.filter(m => m.user.status === 'offline' || !m.user.status);
 
   const statusColors = {
     online: 'bg-green-500',
@@ -78,7 +82,12 @@ export function MemberSidebar({ serverId }: MemberSidebarProps) {
                   Online — {onlineMembers.length}
                 </h4>
                 {onlineMembers.map(member => (
-                  <MemberItem key={member.id} member={member} statusColors={statusColors} />
+                  <MemberItem
+                    key={member.id}
+                    member={member}
+                    statusColors={statusColors}
+                    onClick={() => setSelectedMember(member)}
+                  />
                 ))}
               </div>
             )}
@@ -90,13 +99,36 @@ export function MemberSidebar({ serverId }: MemberSidebarProps) {
                   Offline — {offlineMembers.length}
                 </h4>
                 {offlineMembers.map(member => (
-                  <MemberItem key={member.id} member={member} statusColors={statusColors} />
+                  <MemberItem
+                    key={member.id}
+                    member={member}
+                    statusColors={statusColors}
+                    onClick={() => setSelectedMember(member)}
+                  />
                 ))}
               </div>
             )}
           </>
         )}
       </div>
+
+      {/* Profile Popup */}
+      {selectedMember && selectedMember.user && (
+        <UserProfilePopup
+          isOpen={!!selectedMember}
+          onClose={() => setSelectedMember(null)}
+          user={{
+            ...selectedMember.user,
+            bio: selectedMember.user.bio || null,
+          }}
+          onUpdate={() => {
+            // Refetch members
+            fetch(`/api/servers/${serverId}/members`)
+              .then(res => res.json())
+              .then(data => setMembers(data.members || []));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -104,10 +136,14 @@ export function MemberSidebar({ serverId }: MemberSidebarProps) {
 function MemberItem({
   member,
   statusColors,
+  onClick,
 }: {
   member: Member;
   statusColors: Record<string, string>;
+  onClick: () => void;
 }) {
+  if (!member.user) return null;
+
   const displayName = member.nickname || member.user.ethscription_name ||
     `${member.user.wallet_address.slice(0, 6)}...${member.user.wallet_address.slice(-4)}`;
 
@@ -115,14 +151,21 @@ function MemberItem({
   const roleColor = highestRole?.color || '#ffffff';
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-zinc-800/50 cursor-pointer">
+    <div
+      onClick={onClick}
+      className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-zinc-800/50 cursor-pointer"
+    >
       <div className="relative">
-        <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
+        <div
+          className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden"
+          style={{ imageRendering: 'pixelated' }}
+        >
           {member.user.avatar_url ? (
             <img
               src={member.user.avatar_url}
               alt={displayName}
               className="w-full h-full object-cover"
+              style={{ imageRendering: 'pixelated' }}
             />
           ) : (
             <span className="text-xs font-semibold text-zinc-400">

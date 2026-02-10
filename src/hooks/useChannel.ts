@@ -47,13 +47,25 @@ export function useChannels(serverId: string | null) {
     fetchChannels();
   }, [fetchChannels]);
 
-  const createChannel = async (name: string, type: 'text' | 'category' = 'text', is_private = false, parent_id?: string) => {
+  interface TokenGate {
+    contract_address: string;
+    chain: 'eth' | 'base' | 'appchain';
+    min_balance: number;
+  }
+
+  const createChannel = async (
+    name: string,
+    type: 'text' | 'category' = 'text',
+    is_private = false,
+    token_gate?: TokenGate,
+    parent_id?: string
+  ) => {
     if (!serverId) return;
 
     const res = await fetch(`/api/servers/${serverId}/channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, type, is_private, parent_id }),
+      body: JSON.stringify({ name, type, is_private, parent_id, token_gate }),
     });
     const data = await res.json();
 

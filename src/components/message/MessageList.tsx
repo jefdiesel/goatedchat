@@ -1,16 +1,31 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useMessages } from '@/hooks/useMessages';
+import { Message as MessageType } from '@/hooks/useMessages';
 import { Message } from './Message';
 import { Spinner } from '@/components/ui/Spinner';
 
 interface MessageListProps {
   channelId: string;
+  messages: MessageType[];
+  loading: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  onEdit: (messageId: string, content: string) => Promise<any>;
+  onDelete: (messageId: string) => Promise<void>;
+  onReact: (messageId: string, emoji: string) => Promise<void>;
 }
 
-export function MessageList({ channelId }: MessageListProps) {
-  const { messages, loading, hasMore, loadMore, editMessage, deleteMessage, addReaction } = useMessages(channelId);
+export function MessageList({
+  channelId,
+  messages,
+  loading,
+  hasMore,
+  onLoadMore,
+  onEdit,
+  onDelete,
+  onReact,
+}: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const shouldScrollRef = useRef(true);
@@ -32,9 +47,9 @@ export function MessageList({ channelId }: MessageListProps) {
 
     // Load more when scrolled to top
     if (scrollTop < 100 && hasMore && !loading) {
-      loadMore();
+      onLoadMore();
     }
-  }, [hasMore, loading, loadMore]);
+  }, [hasMore, loading, onLoadMore]);
 
   // Group messages by author and time
   const groupedMessages = messages.reduce((groups, message, index) => {
@@ -76,7 +91,7 @@ export function MessageList({ channelId }: MessageListProps) {
             <Spinner size="sm" />
           ) : (
             <button
-              onClick={loadMore}
+              onClick={onLoadMore}
               className="text-sm text-zinc-400 hover:text-white"
             >
               Load more messages
@@ -102,9 +117,9 @@ export function MessageList({ channelId }: MessageListProps) {
                   key={message.id}
                   message={message}
                   isGrouped={messageIndex > 0}
-                  onEdit={editMessage}
-                  onDelete={deleteMessage}
-                  onReact={addReaction}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onReact={onReact}
                 />
               ))}
             </div>

@@ -23,7 +23,7 @@ const appchain = {
 } as const;
 
 export const config = getDefaultConfig({
-  appName: 'Gated Chat',
+  appName: 'Goat Chat',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo',
   chains: [mainnet, base, appchain],
   transports: {

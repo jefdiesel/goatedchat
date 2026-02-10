@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
 import { SiweMessage } from 'siwe';
 
@@ -23,17 +23,13 @@ export function useAuth() {
   const { address, isConnected, chainId } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { disconnect } = useDisconnect();
+  const previousAddress = useRef<string | undefined>(undefined);
 
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
     isAuthenticated: false,
   });
-
-  // Check existing session on mount
-  useEffect(() => {
-    checkSession();
-  }, []);
 
   const checkSession = useCallback(async () => {
     try {
@@ -45,14 +41,62 @@ export function useAuth() {
         isLoading: false,
         isAuthenticated: !!data.user,
       });
+
+      return data.user;
     } catch {
       setState({
         user: null,
         isLoading: false,
         isAuthenticated: false,
       });
+      return null;
     }
   }, []);
+
+  // Check existing session on mount
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  // Detect wallet address changes and clear session if mismatched
+  useEffect(() => {
+    const handleWalletChange = async () => {
+      // Skip on initial mount
+      if (previousAddress.current === undefined) {
+        previousAddress.current = address;
+        return;
+      }
+
+      // If address changed
+      if (address !== previousAddress.current) {
+        previousAddress.current = address;
+
+        // If disconnected, clear session
+        if (!address) {
+          await fetch('/api/auth/session', { method: 'DELETE' });
+          setState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
+          return;
+        }
+
+        // If connected with different address, check if session matches
+        if (state.user && state.user.wallet_address.toLowerCase() !== address.toLowerCase()) {
+          // Clear old session - user switched wallets
+          await fetch('/api/auth/session', { method: 'DELETE' });
+          setState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        }
+      }
+    };
+
+    handleWalletChange();
+  }, [address, state.user]);
 
   const signIn = useCallback(async () => {
     if (!address || !isConnected) {
@@ -70,7 +114,7 @@ export function useAuth() {
       const message = new SiweMessage({
         domain: window.location.host,
         address,
-        statement: 'Sign in to Gated Chat',
+        statement: 'Sign in to Goat Chat',
         uri: window.location.origin,
         version: '1',
         chainId: chainId || 1,
