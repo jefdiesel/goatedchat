@@ -13,11 +13,14 @@ interface MessageProps {
   onReact: (messageId: string, emoji: string) => Promise<void>;
 }
 
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💯'];
+
 export function Message({ message, isGrouped, onEdit, onDelete, onReact }: MessageProps) {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showActions, setShowActions] = useState(false);
+  const [showReactPicker, setShowReactPicker] = useState(false);
 
   const isAuthor = user?.id === message.author_id;
   const displayName = message.author?.ethscription_name ||
@@ -186,15 +189,33 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
       {/* Action buttons */}
       {showActions && !isEditing && (
         <div className="absolute right-2 -top-3 flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-lg p-1">
-          <button
-            onClick={() => onReact(message.id, '👍')}
-            className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded"
-            title="React"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowReactPicker(!showReactPicker)}
+              className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded"
+              title="React"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            {showReactPicker && (
+              <div className="absolute bottom-full right-0 mb-1 p-1 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl flex gap-1">
+                {REACTION_EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      onReact(message.id, emoji);
+                      setShowReactPicker(false);
+                    }}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-zinc-700 rounded text-base"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {isAuthor && (
             <>
               <button

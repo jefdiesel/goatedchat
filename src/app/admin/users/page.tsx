@@ -39,6 +39,22 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDelete = async (userId: string, displayName: string) => {
+    if (!confirm(`Delete user "${displayName}"? This will remove all their data.`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchUsers();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete user');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
   }, [page]);
@@ -123,7 +139,12 @@ export default function AdminUsersPage() {
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">View</Button>
+                      <button
+                        onClick={() => handleDelete(user.id, user.ethscription_name || user.wallet_address)}
+                        className="text-sm text-zinc-400 hover:text-red-400"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}

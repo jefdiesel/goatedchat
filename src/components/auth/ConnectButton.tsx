@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ConnectButton as RainbowConnectButton } from '@rainbow-me/rainbowkit';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -8,6 +8,19 @@ export function ConnectButton() {
   const { user, isAuthenticated, isLoading, signIn, signOut, isConnected } = useAuth();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasTriedAutoSign = useRef(false);
+
+  // Auto sign-in when wallet connects
+  useEffect(() => {
+    if (isConnected && !isAuthenticated && !isLoading && !signingIn && !hasTriedAutoSign.current) {
+      hasTriedAutoSign.current = true;
+      handleSignIn();
+    }
+    // Reset when disconnected
+    if (!isConnected) {
+      hasTriedAutoSign.current = false;
+    }
+  }, [isConnected, isAuthenticated, isLoading, signingIn]);
 
   const handleSignIn = async () => {
     setSigningIn(true);

@@ -7,11 +7,16 @@ interface MessageInputProps {
   onSend: (content: string, reply_to_id?: string) => Promise<any>;
 }
 
+const EMOJI_LIST = ['😀', '😂', '🥲', '😍', '🤔', '😎', '🔥', '❤️', '👍', '👎', '👀', '🎉', '💀', '🙏', '💯', '✨'];
+
 export function MessageInput({ channelId, onSend }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
     if (!content.trim() || sending) return;
@@ -48,6 +53,63 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      // Get signed upload URL
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          size: file.size,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to get upload URL');
+      }
+
+      const { uploadUrl, publicUrl } = await res.json();
+
+      // Upload to R2
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      // Send message with the file URL
+      const isImage = file.type.startsWith('image/');
+      const messageContent = isImage ? `![${file.name}](${publicUrl})` : `[${file.name}](${publicUrl})`;
+      await onSend(messageContent);
+    } catch (err: any) {
+      setError(err?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const insertEmoji = (emoji: string) => {
+    setContent(prev => prev + emoji);
+    setShowEmoji(false);
+    textareaRef.current?.focus();
+  };
+
   return (
     <div className="px-4 pb-4">
       {error && (
@@ -56,14 +118,29 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
         </div>
       )}
       <div className="flex items-end gap-2 bg-zinc-800 border border-zinc-700 rounded-xl p-2">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,video/*,audio/*,.pdf"
+          onChange={handleFileSelect}
+        />
+
         {/* Attachment button */}
         <button
-          className="p-2 text-zinc-400 hover:text-white transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="p-2 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
           title="Add attachment"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          {uploading ? (
+            <div className="w-5 h-5 border-2 border-zinc-400/30 border-t-zinc-400 rounded-full animate-spin" />
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          )}
         </button>
 
         {/* Text input */}
@@ -79,14 +156,34 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
         />
 
         {/* Emoji button */}
-        <button
-          className="p-2 text-zinc-400 hover:text-white transition-colors"
-          title="Add emoji"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowEmoji(!showEmoji)}
+            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            title="Add emoji"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+
+          {/* Emoji picker dropdown */}
+          {showEmoji && (
+            <div className="absolute bottom-full right-0 mb-2 p-2 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl">
+              <div className="grid grid-cols-8 gap-1">
+                {EMOJI_LIST.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => insertEmoji(emoji)}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-zinc-700 rounded text-lg"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Send button */}
         <button

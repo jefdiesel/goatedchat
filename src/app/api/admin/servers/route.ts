@@ -23,7 +23,7 @@ async function logAudit(adminId: string, action: string, targetType: string, tar
   });
 }
 
-// GET - List all users (admin only)
+// GET - List all servers (admin only)
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -44,34 +44,39 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     let query = supabase
-      .from('users')
-      .select('*', { count: 'exact' })
+      .from('servers')
+      .select(`
+        *,
+        owner:users!servers_owner_id_fkey(wallet_address, ethscription_name),
+        _count:server_members(count)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
 
     if (search) {
-      query = query.or(`wallet_address.ilike.%${search}%,ethscription_name.ilike.%${search}%`);
+      query = query.ilike('name', `%${search}%`);
     }
 
-    const { data: users, count, error } = await query;
+    const { data: servers, count, error } = await query;
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+      console.error('Fetch servers error:', error);
+      return NextResponse.json({ error: 'Failed to fetch servers' }, { status: 500 });
     }
 
     return NextResponse.json({
-      users,
+      servers,
       total: count,
       page,
       totalPages: Math.ceil((count || 0) / limit),
     });
   } catch (error) {
-    console.error('Admin users error:', error);
+    console.error('Admin servers error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// DELETE - Ban/delete a user (admin only)
+// DELETE - Force delete a server (admin only)
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getSession();
@@ -85,52 +90,45 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('id');
+    const serverId = searchParams.get('id');
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
-
-    // Can't delete yourself
-    if (userId === session.userId) {
-      return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
+    if (!serverId) {
+      return NextResponse.json({ error: 'Server ID required' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
 
-    // Get user info for audit
-    const { data: user } = await supabase
-      .from('users')
-      .select('wallet_address, ethscription_name')
-      .eq('id', userId)
+    // Get server info for audit
+    const { data: server } = await supabase
+      .from('servers')
+      .select('name, owner_id')
+      .eq('id', serverId)
       .single();
 
-    // Check if target is also an admin
-    const targetAdmin = await checkAdmin(userId);
-    if (targetAdmin && admin.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Only super admins can delete admins' }, { status: 403 });
+    if (!server) {
+      return NextResponse.json({ error: 'Server not found' }, { status: 404 });
     }
 
-    // Delete user (cascades to memberships, messages, etc.)
+    // Delete server (cascades)
     const { error } = await supabase
-      .from('users')
+      .from('servers')
       .delete()
-      .eq('id', userId);
+      .eq('id', serverId);
 
     if (error) {
-      console.error('Delete user error:', error);
-      return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+      console.error('Delete server error:', error);
+      return NextResponse.json({ error: 'Failed to delete server' }, { status: 500 });
     }
 
     // Log audit
-    await logAudit(session.userId, 'DELETE_USER', 'user', userId, {
-      wallet_address: user?.wallet_address,
-      ethscription_name: user?.ethscription_name,
+    await logAudit(session.userId, 'DELETE_SERVER', 'server', serverId, {
+      name: server.name,
+      owner_id: server.owner_id,
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Admin delete user error:', error);
+    console.error('Admin delete server error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
