@@ -3,15 +3,15 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3Client = new S3Client({
   region: 'auto',
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT?.trim(),
   credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID?.trim() || '',
+    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY?.trim() || '',
   },
 });
 
-const BUCKET = process.env.CLOUDFLARE_R2_BUCKET || 'gated-chat';
-const CDN_URL = process.env.CLOUDFLARE_CDN_URL || '';
+const BUCKET = process.env.CLOUDFLARE_R2_BUCKET?.trim() || 'gated-chat';
+const CDN_URL = process.env.CLOUDFLARE_CDN_URL?.trim() || '';
 
 export async function generateUploadUrl(
   key: string,
