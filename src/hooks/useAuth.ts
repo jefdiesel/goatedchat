@@ -75,9 +75,11 @@ export function useAuth() {
         version: '1',
         chainId: chainId || 1,
         nonce,
+        issuedAt: new Date().toISOString(),
       });
 
       const messageToSign = message.prepareMessage();
+      console.log('SIWE message:', messageToSign);
 
       // Sign message
       const signature = await signMessageAsync({ message: messageToSign });

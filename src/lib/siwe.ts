@@ -76,13 +76,17 @@ export async function verifySiweMessage(
   signature: string
 ): Promise<{ address: string } | null> {
   try {
+    console.log('Verifying SIWE message:', message);
     const siweMessage = new SiweMessage(message);
     const result = await siweMessage.verify({ signature });
+    console.log('SIWE verify result:', result);
     if (result.success) {
       return { address: siweMessage.address };
     }
+    console.log('SIWE verification failed:', result.error);
     return null;
-  } catch {
+  } catch (error) {
+    console.error('SIWE verification error:', error);
     return null;
   }
 }
