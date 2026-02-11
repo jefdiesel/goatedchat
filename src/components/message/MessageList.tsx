@@ -14,6 +14,7 @@ interface MessageListProps {
   onEdit: (messageId: string, content: string) => Promise<any>;
   onDelete: (messageId: string) => Promise<void>;
   onReact: (messageId: string, emoji: string) => Promise<void>;
+  onReply: (message: MessageType) => void;
 }
 
 export function MessageList({
@@ -25,6 +26,7 @@ export function MessageList({
   onEdit,
   onDelete,
   onReact,
+  onReply,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -120,6 +122,7 @@ export function MessageList({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onReact={onReact}
+                  onReply={onReply}
                 />
               ))}
             </div>

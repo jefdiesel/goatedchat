@@ -87,9 +87,18 @@ export default function ServersPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="max-w-2xl w-full text-center">
           <h1 className="text-3xl font-bold mb-2">Welcome to Goat Chat</h1>
-          <p className="text-zinc-400 mb-8">
+          <p className="text-zinc-400 mb-4">
             Select a server from the sidebar or create a new one
           </p>
+          <Link
+            href="/servers/discover"
+            className="inline-flex items-center gap-2 text-[#c3ff00] hover:underline mb-8"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Browse all servers
+          </Link>
 
           {loading ? (
             <div className="flex justify-center py-12">
@@ -131,6 +140,7 @@ export default function ServersPage() {
                             src={server.icon_url}
                             alt={server.name}
                             className="w-full h-full rounded-2xl object-cover"
+                            style={{ imageRendering: 'pixelated' }}
                           />
                         ) : (
                           <span className="text-xl font-bold text-zinc-400">

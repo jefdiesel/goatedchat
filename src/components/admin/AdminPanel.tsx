@@ -815,7 +815,7 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                       <div className="px-4 py-3 border-b border-zinc-700 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-zinc-700 flex items-center justify-center overflow-hidden">
                           {server.icon_url ? (
-                            <img src={server.icon_url} alt="" className="w-full h-full object-cover" />
+                            <img src={server.icon_url} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
                           ) : (
                             <span className="text-xs font-semibold">{server.name.slice(0, 2).toUpperCase()}</span>
                           )}

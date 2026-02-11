@@ -1,15 +1,26 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useEffect } from 'react';
+
+interface ReplyTo {
+  id: string;
+  content: string;
+  author?: {
+    ethscription_name: string | null;
+    wallet_address: string;
+  };
+}
 
 interface MessageInputProps {
   channelId: string;
   onSend: (content: string, reply_to_id?: string) => Promise<any>;
+  replyTo?: ReplyTo | null;
+  onCancelReply?: () => void;
 }
 
 const EMOJI_LIST = ['🤙', '😀', '😂', '🥲', '😍', '🤔', '😎', '🔥', '❤️', '👎', '👀', '🎉', '💀', '🙏', '💯', '✨'];
 
-export function MessageInput({ channelId, onSend }: MessageInputProps) {
+export function MessageInput({ channelId, onSend, replyTo, onCancelReply }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,23 +29,34 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Focus input when replying
+  useEffect(() => {
+    if (replyTo) {
+      textareaRef.current?.focus();
+    }
+  }, [replyTo]);
+
   const handleSubmit = async () => {
     if (!content.trim() || sending) return;
 
     setSending(true);
     setError(null);
     try {
-      await onSend(content.trim());
+      await onSend(content.trim(), replyTo?.id);
       setContent('');
+      onCancelReply?.();
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
-        textareaRef.current.focus();
       }
     } catch (err: any) {
       console.error('Failed to send message:', err);
       setError(err?.message || 'Failed to send message');
     } finally {
       setSending(false);
+      // Focus after all state updates complete
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     }
   };
 
@@ -102,6 +124,30 @@ export function MessageInput({ channelId, onSend }: MessageInputProps) {
       {error && (
         <div className="mb-2 px-3 py-2 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400">
           {error}
+        </div>
+      )}
+      {/* Reply preview */}
+      {replyTo && (
+        <div className="mb-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg flex items-center gap-2">
+          <div className="w-1 h-8 bg-[#c3ff00] rounded-full flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-[#c3ff00] font-medium">
+              Replying to {replyTo.author?.ethscription_name ||
+                (replyTo.author?.wallet_address
+                  ? `${replyTo.author.wallet_address.slice(0, 6)}...${replyTo.author.wallet_address.slice(-4)}`
+                  : 'Unknown')}
+            </span>
+            <p className="text-sm text-zinc-400 truncate">{replyTo.content}</p>
+          </div>
+          <button
+            onClick={onCancelReply}
+            className="p-1 text-zinc-500 hover:text-white transition-colors"
+            title="Cancel reply"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
       <div className="flex items-end gap-2 bg-zinc-800 border border-zinc-700 rounded-xl p-2">

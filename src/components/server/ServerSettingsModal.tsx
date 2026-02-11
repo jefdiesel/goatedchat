@@ -35,6 +35,7 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showRoleManagement, setShowRoleManagement] = useState(false);
+  const [ethscriptionTxId, setEthscriptionTxId] = useState('');
 
   // Reset form when server changes
   useEffect(() => {
@@ -43,7 +44,43 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
     setWebsiteUrl(server.website_url || '');
     setIconPreview(server.icon_url);
     setIconFile(null);
+    setEthscriptionTxId('');
   }, [server]);
+
+  const handleEthscriptionInput = async (input: string) => {
+    setEthscriptionTxId(input);
+    setIconFile(null);
+
+    // Handle tx hash (0x...) - fetch via our proxy to avoid CORS
+    if (input.match(/^0x[a-fA-F0-9]{64}$/)) {
+      try {
+        const res = await fetch(`/api/ethscription/${input}`);
+        const contentType = res.headers.get('content-type');
+
+        if (contentType?.includes('application/json')) {
+          // It's a data URI response
+          const data = await res.json();
+          if (data.dataUri) {
+            setIconPreview(data.dataUri);
+          }
+        } else {
+          // It's binary - use the proxy URL directly
+          setIconPreview(`/api/ethscription/${input}`);
+        }
+      } catch {
+        // Fallback to proxy URL
+        setIconPreview(`/api/ethscription/${input}`);
+      }
+    }
+    // Handle data URI (data:image/...)
+    else if (input.startsWith('data:')) {
+      setIconPreview(input);
+    }
+    // Handle regular URL
+    else if (input.startsWith('http://') || input.startsWith('https://')) {
+      setIconPreview(input);
+    }
+  };
 
   const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,8 +102,12 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
     try {
       let iconUrl = server.icon_url;
 
+      // Use the preview if we have one from ethscription input (handles fetched data URIs)
+      if (ethscriptionTxId && iconPreview && iconPreview !== server.icon_url) {
+        iconUrl = iconPreview;
+      }
       // Upload icon if changed
-      if (iconFile) {
+      else if (iconFile) {
         const formData = new FormData();
         formData.append('file', iconFile);
 
@@ -158,7 +199,7 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
             className="w-20 h-20 rounded-2xl bg-zinc-700 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group"
           >
             {iconPreview ? (
-              <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" />
+              <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
             ) : (
               <span className="text-2xl font-bold text-zinc-400">
                 {name.slice(0, 2).toUpperCase()}
@@ -178,9 +219,16 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
             onChange={handleIconChange}
             className="hidden"
           />
-          <div>
+          <div className="flex-1">
             <p className="font-medium">Server Icon</p>
-            <p className="text-sm text-zinc-500">Click to upload</p>
+            <p className="text-sm text-zinc-500 mb-2">Click to upload or use ethscription</p>
+            <input
+              type="text"
+              value={ethscriptionTxId}
+              onChange={e => handleEthscriptionInput(e.target.value)}
+              placeholder="Tx hash, image URL, or data URI"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-[#c3ff00]"
+            />
           </div>
         </div>
 

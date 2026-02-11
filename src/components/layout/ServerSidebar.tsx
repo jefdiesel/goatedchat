@@ -95,6 +95,7 @@ export function ServerSidebar({ activeServerId }: ServerSidebarProps) {
                     src={server.icon_url}
                     alt={server.name}
                     className="w-full h-full rounded-2xl object-cover"
+                    style={{ imageRendering: 'pixelated' }}
                   />
                 ) : (
                   <span className="text-lg font-semibold">
@@ -130,6 +131,18 @@ export function ServerSidebar({ activeServerId }: ServerSidebarProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
           </button>
+        </Tooltip>
+
+        {/* Discover servers button */}
+        <Tooltip content="Discover Servers" side="right">
+          <Link
+            href="/servers/discover"
+            className="w-12 h-12 rounded-2xl bg-zinc-800 text-zinc-400 flex items-center justify-center hover:bg-zinc-700 hover:text-white hover:rounded-xl transition-all"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </Link>
         </Tooltip>
 
         {/* Spacer to push user menu to bottom */}

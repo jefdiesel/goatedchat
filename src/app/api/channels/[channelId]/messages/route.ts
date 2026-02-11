@@ -139,7 +139,7 @@ export async function POST(
     }
 
     // Create message
-    const { data: message, error: messageError } = await supabase
+    const { data: insertedMessage, error: messageError } = await supabase
       .from('messages')
       .insert({
         channel_id: channelId,
@@ -148,19 +148,7 @@ export async function POST(
         type: reply_to_id ? 'reply' : 'default',
         reply_to_id: reply_to_id || null,
       })
-      .select(`
-        *,
-        author:users!author_id (
-          id,
-          wallet_address,
-          ethscription_name,
-          avatar_url,
-          bio,
-          twitter_handle,
-          discord_handle,
-          ens_name
-        )
-      `)
+      .select('id')
       .single();
 
     if (messageError) {
@@ -172,7 +160,7 @@ export async function POST(
     if (attachments && attachments.length > 0) {
       await supabase.from('message_attachments').insert(
         attachments.map((a: any) => ({
-          message_id: message.id,
+          message_id: insertedMessage.id,
           url: a.url,
           content_type: a.content_type,
           size: a.size,
@@ -180,6 +168,40 @@ export async function POST(
         }))
       );
     }
+
+    // Fetch the complete message with all relations (separate query for self-referential join)
+    const { data: message } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        author:users!author_id (
+          id,
+          wallet_address,
+          ethscription_name,
+          avatar_url,
+          bio,
+          twitter_handle,
+          discord_handle,
+          ens_name
+        ),
+        attachments:message_attachments (*),
+        reactions:message_reactions (
+          id,
+          emoji,
+          user_id
+        ),
+        reply_to:messages!reply_to_id (
+          id,
+          content,
+          author:users!author_id (
+            id,
+            ethscription_name,
+            wallet_address
+          )
+        )
+      `)
+      .eq('id', insertedMessage.id)
+      .single();
 
     return NextResponse.json({ message });
   } catch (error) {

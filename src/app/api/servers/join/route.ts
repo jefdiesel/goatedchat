@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/siwe';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 
-// POST - Join a server via invite code
+// POST - Join a server via invite code or server_id (for discover)
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -10,23 +10,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { invite_code } = await request.json();
+    const { invite_code, server_id } = await request.json();
 
-    if (!invite_code) {
-      return NextResponse.json({ error: 'Invite code is required' }, { status: 400 });
+    if (!invite_code && !server_id) {
+      return NextResponse.json({ error: 'Invite code or server ID is required' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
 
-    // Find server by invite code
-    const { data: server, error: serverError } = await supabase
-      .from('servers')
-      .select('*')
-      .eq('invite_code', invite_code)
-      .single();
+    let server;
 
-    if (serverError || !server) {
-      return NextResponse.json({ error: 'Invalid invite code' }, { status: 404 });
+    if (server_id) {
+      // Join by server ID (from discover page)
+      const { data, error } = await supabase
+        .from('servers')
+        .select('*')
+        .eq('id', server_id)
+        .single();
+
+      if (error || !data) {
+        return NextResponse.json({ error: 'Server not found' }, { status: 404 });
+      }
+      server = data;
+    } else {
+      // Join by invite code
+      const { data, error } = await supabase
+        .from('servers')
+        .select('*')
+        .eq('invite_code', invite_code)
+        .single();
+
+      if (error || !data) {
+        return NextResponse.json({ error: 'Invalid invite code' }, { status: 404 });
+      }
+      server = data;
     }
 
     // Check if already a member

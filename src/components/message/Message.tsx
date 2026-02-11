@@ -12,11 +12,12 @@ interface MessageProps {
   onEdit: (messageId: string, content: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
   onReact: (messageId: string, emoji: string) => Promise<void>;
+  onReply: (message: MessageType) => void;
 }
 
 const REACTION_EMOJIS = ['🤙', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💯'];
 
-export function Message({ message, isGrouped, onEdit, onDelete, onReact }: MessageProps) {
+export function Message({ message, isGrouped, onEdit, onDelete, onReact, onReply }: MessageProps) {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -98,16 +99,19 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
           </div>
         )}
 
-        {/* Reply preview - only show if reply_to has actual content */}
-        {message.reply_to && message.reply_to.id && message.reply_to.content && (
-          <div className="flex items-center gap-2 text-sm text-zinc-500 mb-1 pl-2 border-l-2 border-zinc-700">
-            <span className="font-medium">
-              {message.reply_to.author?.ethscription_name ||
+        {/* Reply citation - show the message being replied to */}
+        {message.reply_to && message.reply_to.id && (
+          <div className="flex items-center gap-2 text-sm mb-1 cursor-pointer hover:bg-zinc-800/50 rounded px-2 py-1 -ml-2">
+            <svg className="w-4 h-4 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            <span className="text-[#c3ff00] font-medium flex-shrink-0">
+              @{message.reply_to.author?.ethscription_name ||
                 (message.reply_to.author?.wallet_address
-                  ? `${message.reply_to.author.wallet_address.slice(0, 6)}...`
+                  ? `${message.reply_to.author.wallet_address.slice(0, 6)}...${message.reply_to.author.wallet_address.slice(-4)}`
                   : 'Unknown')}
             </span>
-            <span className="truncate">{message.reply_to.content}</span>
+            <span className="text-zinc-400 truncate">{message.reply_to.content || '[message]'}</span>
           </div>
         )}
 
@@ -218,19 +222,19 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
 
       {/* Action buttons */}
       {showActions && !isEditing && (
-        <div className="absolute right-2 -top-3 flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-lg p-1">
+        <div className="absolute right-2 -top-3 flex items-center gap-0.5 bg-zinc-800 border border-zinc-700 rounded-lg p-0.5">
           <div className="relative">
             <button
               onClick={() => setShowReactPicker(!showReactPicker)}
-              className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded"
+              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded"
               title="React"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
             {showReactPicker && (
-              <div className="absolute bottom-full right-0 mb-1 p-1 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl flex gap-1">
+              <div className="absolute bottom-full right-0 mb-1 p-1.5 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl flex gap-1">
                 {REACTION_EMOJIS.map(emoji => (
                   <button
                     key={emoji}
@@ -238,7 +242,7 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
                       onReact(message.id, emoji);
                       setShowReactPicker(false);
                     }}
-                    className="w-7 h-7 flex items-center justify-center hover:bg-zinc-700 rounded text-base"
+                    className="w-9 h-9 flex items-center justify-center hover:bg-zinc-700 rounded text-xl"
                   >
                     {emoji}
                   </button>
@@ -246,23 +250,32 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact }: Messa
               </div>
             )}
           </div>
+          <button
+            onClick={() => onReply(message)}
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded"
+            title="Reply"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </button>
           {isAuthor && (
             <>
               <button
                 onClick={() => setIsEditing(true)}
-                className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded"
+                className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded"
                 title="Edit"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
               <button
                 onClick={() => onDelete(message.id)}
-                className="p-1 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 rounded"
+                className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 rounded"
                 title="Delete"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
