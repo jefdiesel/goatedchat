@@ -50,7 +50,7 @@ export async function GET() {
   }
 }
 
-// POST - Create a new server
+// POST - Create a new server (admin only)
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -58,13 +58,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const supabase = getSupabaseAdmin();
+
+    // Check if user is a platform admin
+    const { data: admin } = await supabase
+      .from('platform_admins')
+      .select('role')
+      .eq('user_id', session.userId)
+      .single();
+
+    if (!admin) {
+      return NextResponse.json({ error: 'Only platform admins can create servers' }, { status: 403 });
+    }
+
     const { name, icon_url } = await request.json();
 
     if (!name || name.trim().length === 0) {
       return NextResponse.json({ error: 'Server name is required' }, { status: 400 });
     }
-
-    const supabase = getSupabaseAdmin();
 
     // Create the server
     const { data: server, error: serverError } = await supabase

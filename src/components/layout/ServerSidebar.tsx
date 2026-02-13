@@ -109,17 +109,19 @@ export function ServerSidebar({ activeServerId }: ServerSidebarProps) {
 
         <div className="w-8 h-px bg-border my-1" />
 
-        {/* Add server button */}
-        <Tooltip content="Create Server" side="right">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="w-12 h-12 rounded-2xl bg-zinc-800 text-[#c3ff00] flex items-center justify-center hover:bg-[#c3ff00] hover:text-black hover:rounded-xl transition-all"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </Tooltip>
+        {/* Add server button - admin only */}
+        {isAdmin && (
+          <Tooltip content="Create Server" side="right">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="w-12 h-12 rounded-2xl bg-zinc-800 text-[#c3ff00] flex items-center justify-center hover:bg-[#c3ff00] hover:text-black hover:rounded-xl transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </Tooltip>
+        )}
 
         {/* Join server button */}
         <Tooltip content="Join Server" side="right">
