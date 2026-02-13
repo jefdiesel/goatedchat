@@ -41,6 +41,18 @@ interface Server {
   channels: Channel[];
 }
 
+interface AdminServer {
+  id: string;
+  name: string;
+  icon_url: string | null;
+  created_at: string;
+  owner?: {
+    wallet_address: string;
+    ethscription_name: string | null;
+  };
+  _count?: { count: number }[];
+}
+
 interface Channel {
   id: string;
   name: string;
@@ -78,7 +90,7 @@ interface ServerMember {
   roles: { role: { id: string; name: string; color: string } }[];
 }
 
-type Tab = 'users' | 'admins' | 'bans' | 'channels' | 'roles';
+type Tab = 'users' | 'admins' | 'bans' | 'channels' | 'roles' | 'servers';
 
 export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('users');
@@ -88,8 +100,10 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const [servers, setServers] = useState<Server[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
+  const [adminServers, setAdminServers] = useState<AdminServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
 
   // Ban form
   const [banAddress, setBanAddress] = useState('');
@@ -144,6 +158,7 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         fetchServers();
         fetchRoles();
       }
+      if (activeTab === 'servers') fetchAdminServers();
     }
   }, [isOpen, activeTab]);
 
@@ -215,6 +230,36 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       console.error('Failed to fetch servers:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAdminServers = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/servers');
+      if (res.ok) {
+        const data = await res.json();
+        setAdminServers(data.servers || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch admin servers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAdminServer = async (serverId: string) => {
+    try {
+      const res = await fetch(`/api/admin/servers?id=${serverId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setAdminServers(adminServers.filter(s => s.id !== serverId));
+        setDeletingServerId(null);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete server');
+      }
+    } catch (err) {
+      console.error('Failed to delete server:', err);
     }
   };
 
@@ -535,7 +580,7 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
         {/* Tabs */}
         <div className="flex border-b border-zinc-800 overflow-x-auto">
-          {(['users', 'admins', 'bans', 'channels', 'roles'] as Tab[]).map(tab => (
+          {(['users', 'admins', 'bans', 'servers', 'channels', 'roles'] as Tab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -770,6 +815,80 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                   ))}
                   {bans.length === 0 && (
                     <p className="text-center text-zinc-500 py-8">No banned wallets</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SERVERS TAB */}
+          {activeTab === 'servers' && (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-400">
+                Manage all servers on the platform. Deleting a server removes all channels, messages, and members.
+              </p>
+
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-zinc-600 border-t-[#c3ff00] rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {adminServers.map(server => (
+                    <div key={server.id} className="p-4 bg-zinc-800 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {server.icon_url ? (
+                            <img src={server.icon_url} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                          ) : (
+                            <span className="text-lg font-semibold text-zinc-400">
+                              {server.name.slice(0, 2).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{server.name}</p>
+                          <p className="text-xs text-zinc-500">
+                            Owner: {server.owner?.ethscription_name || formatAddress(server.owner?.wallet_address || '')}
+                          </p>
+                          <p className="text-xs text-zinc-600">
+                            {server._count?.[0]?.count || 0} members · Created {new Date(server.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {deletingServerId === server.id ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-red-400">Confirm?</span>
+                              <button
+                                onClick={() => handleDeleteAdminServer(server.id)}
+                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => setDeletingServerId(null)}
+                                className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-medium rounded"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setDeletingServerId(server.id)}
+                              className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 rounded transition-colors"
+                              title="Delete server"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {adminServers.length === 0 && (
+                    <p className="text-center text-zinc-500 py-8">No servers found</p>
                   )}
                 </div>
               )}
