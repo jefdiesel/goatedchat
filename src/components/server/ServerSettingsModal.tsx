@@ -92,6 +92,7 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
     const file = e.target.files?.[0];
     if (file) {
       setIconFile(file);
+      setEthscriptionTxId(''); // Clear ethscription input when uploading file
       const reader = new FileReader();
       reader.onloadend = () => {
         setIconPreview(reader.result as string);
@@ -205,7 +206,13 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
             className="w-20 h-20 rounded-2xl bg-zinc-700 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group"
           >
             {iconPreview ? (
-              <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+              <img
+                src={iconPreview}
+                alt="Server icon"
+                className="w-full h-full object-cover"
+                style={{ imageRendering: 'pixelated' }}
+                onError={() => setIconPreview(null)}
+              />
             ) : (
               <span className="text-2xl font-bold text-zinc-400">
                 {name.slice(0, 2).toUpperCase()}
