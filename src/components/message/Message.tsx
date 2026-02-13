@@ -100,20 +100,25 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact, onReply
         )}
 
         {/* Reply citation - show the message being replied to */}
-        {message.reply_to && message.reply_to.id && (
-          <div className="flex items-center gap-2 text-sm mb-1 cursor-pointer hover:bg-zinc-800/50 rounded px-2 py-1 -ml-2">
-            <svg className="w-4 h-4 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-            <span className="text-[#c3ff00] font-medium flex-shrink-0">
-              @{message.reply_to.author?.ethscription_name ||
-                (message.reply_to.author?.wallet_address
-                  ? `${message.reply_to.author.wallet_address.slice(0, 6)}...${message.reply_to.author.wallet_address.slice(-4)}`
-                  : 'Unknown')}
-            </span>
-            <span className="text-zinc-400 truncate">{message.reply_to.content || '[message]'}</span>
-          </div>
-        )}
+        {(() => {
+          // Supabase returns self-referential joins as arrays
+          const replyTo = Array.isArray(message.reply_to) ? message.reply_to[0] : message.reply_to;
+          if (!replyTo?.id) return null;
+          return (
+            <div className="flex items-center gap-2 text-sm mb-1 cursor-pointer hover:bg-zinc-800/50 rounded px-2 py-1 -ml-2">
+              <svg className="w-4 h-4 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              <span className="text-[#c3ff00] font-medium flex-shrink-0">
+                @{replyTo.author?.ethscription_name ||
+                  (replyTo.author?.wallet_address
+                    ? `${replyTo.author.wallet_address.slice(0, 6)}...${replyTo.author.wallet_address.slice(-4)}`
+                    : 'Unknown')}
+              </span>
+              <span className="text-zinc-400 truncate">{replyTo.content || '[message]'}</span>
+            </div>
+          );
+        })()}
 
         {isEditing ? (
           <div className="mt-1">

@@ -15,11 +15,11 @@ interface ChannelSettingsModalProps {
   onUpdate: () => void;
 }
 
-// Convert ethscription tx ID to content URL
+// Convert ethscription tx ID to content URL via local proxy (avoids CORS)
 const getEthscriptionUrl = (txId: string) => {
   const cleanId = txId.trim().toLowerCase();
   if (cleanId.startsWith('0x') && cleanId.length === 66) {
-    return `https://api.ethscriptions.com/v2/ethscriptions/${cleanId}/content`;
+    return `/api/ethscription/${cleanId}`;
   }
   return null;
 };
