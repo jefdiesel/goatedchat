@@ -92,7 +92,7 @@ export function ServerSidebar({ activeServerId }: ServerSidebarProps) {
                       router.push(`/servers/${server.id}`);
                     }
                   }}
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:rounded-xl ${
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:rounded-xl overflow-hidden ${
                     isActive
                       ? 'bg-[#c3ff00] text-black'
                       : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
@@ -102,7 +102,7 @@ export function ServerSidebar({ activeServerId }: ServerSidebarProps) {
                     <img
                       src={server.icon_url}
                       alt={server.name}
-                      className="w-full h-full rounded-2xl object-cover"
+                      className="w-full h-full object-cover"
                       style={{ imageRendering: 'pixelated' }}
                     />
                   ) : (
