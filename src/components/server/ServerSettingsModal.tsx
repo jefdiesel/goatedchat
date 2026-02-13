@@ -51,10 +51,16 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
     setEthscriptionTxId(input);
     setIconFile(null);
 
+    // Normalize tx hash - add 0x if missing
+    let txHash = input.trim();
+    if (txHash.match(/^[a-fA-F0-9]{64}$/)) {
+      txHash = '0x' + txHash;
+    }
+
     // Handle tx hash (0x...) - fetch via our proxy to avoid CORS
-    if (input.match(/^0x[a-fA-F0-9]{64}$/)) {
+    if (txHash.match(/^0x[a-fA-F0-9]{64}$/)) {
       try {
-        const res = await fetch(`/api/ethscription/${input}`);
+        const res = await fetch(`/api/ethscription/${txHash}`);
         const contentType = res.headers.get('content-type');
 
         if (contentType?.includes('application/json')) {
@@ -65,11 +71,11 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
           }
         } else {
           // It's binary - use the proxy URL directly
-          setIconPreview(`/api/ethscription/${input}`);
+          setIconPreview(`/api/ethscription/${txHash}`);
         }
       } catch {
         // Fallback to proxy URL
-        setIconPreview(`/api/ethscription/${input}`);
+        setIconPreview(`/api/ethscription/${txHash}`);
       }
     }
     // Handle data URI (data:image/...)

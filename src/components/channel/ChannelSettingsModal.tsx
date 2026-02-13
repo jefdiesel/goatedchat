@@ -17,8 +17,12 @@ interface ChannelSettingsModalProps {
 
 // Convert ethscription tx ID to content URL via local proxy (avoids CORS)
 const getEthscriptionUrl = (txId: string) => {
-  const cleanId = txId.trim().toLowerCase();
-  if (cleanId.startsWith('0x') && cleanId.length === 66) {
+  let cleanId = txId.trim().toLowerCase();
+  // Add 0x prefix if missing
+  if (cleanId.match(/^[a-f0-9]{64}$/)) {
+    cleanId = '0x' + cleanId;
+  }
+  if (cleanId.match(/^0x[a-f0-9]{64}$/)) {
     return `/api/ethscription/${cleanId}`;
   }
   return null;
