@@ -61,6 +61,13 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
     if (txHash.match(/^0x[a-fA-F0-9]{64}$/)) {
       try {
         const res = await fetch(`/api/ethscription/${txHash}`);
+
+        if (!res.ok) {
+          console.error('Ethscription fetch failed:', res.status);
+          setIconPreview(null);
+          return;
+        }
+
         const contentType = res.headers.get('content-type');
 
         if (contentType?.includes('application/json')) {
@@ -68,14 +75,17 @@ export function ServerSettingsModal({ isOpen, onClose, server, onUpdate }: Serve
           const data = await res.json();
           if (data.dataUri) {
             setIconPreview(data.dataUri);
+          } else if (data.error) {
+            console.error('Ethscription error:', data.error);
+            setIconPreview(null);
           }
         } else {
           // It's binary - use the proxy URL directly
           setIconPreview(`/api/ethscription/${txHash}`);
         }
-      } catch {
-        // Fallback to proxy URL
-        setIconPreview(`/api/ethscription/${txHash}`);
+      } catch (err) {
+        console.error('Ethscription fetch error:', err);
+        setIconPreview(null);
       }
     }
     // Handle data URI (data:image/...)
