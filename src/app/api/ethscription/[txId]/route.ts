@@ -20,16 +20,25 @@ export async function GET(
       return NextResponse.json({ error: 'Ethscription not found' }, { status: 404 });
     }
 
-    const text = await res.text();
+    const contentType = res.headers.get('content-type') || 'application/octet-stream';
 
-    // If it's a data URI, return it as JSON
-    if (text.startsWith('data:')) {
-      return NextResponse.json({ dataUri: text });
+    // Check if it's a data URI (text response)
+    if (contentType.includes('text/') || contentType.includes('application/json')) {
+      const text = await res.text();
+      if (text.startsWith('data:')) {
+        return NextResponse.json({ dataUri: text });
+      }
+      // Return text as-is
+      return new NextResponse(text, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=31536000',
+        },
+      });
     }
 
-    // Otherwise proxy the binary content
-    const contentType = res.headers.get('content-type') || 'application/octet-stream';
-    const buffer = Buffer.from(text, 'binary');
+    // For binary content (images), use arrayBuffer to preserve data
+    const buffer = await res.arrayBuffer();
 
     return new NextResponse(buffer, {
       headers: {
