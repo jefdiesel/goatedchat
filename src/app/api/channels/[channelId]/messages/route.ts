@@ -108,9 +108,11 @@ export async function POST(
     }
 
     const { channelId } = await params;
-    const { content, reply_to_id, attachments } = await request.json();
+    const body = await request.json();
+    const { content, reply_to_id, attachments, encrypted } = body;
 
-    if (!content?.trim() && (!attachments || attachments.length === 0)) {
+    // For encrypted messages, content is optional (stored in encrypted_content)
+    if (!encrypted && !content?.trim() && (!attachments || attachments.length === 0)) {
       return NextResponse.json({ error: 'Message content is required' }, { status: 400 });
     }
 
@@ -138,16 +140,31 @@ export async function POST(
       return NextResponse.json({ error: 'Not a member' }, { status: 403 });
     }
 
+    // Build insert data
+    const insertData: Record<string, unknown> = {
+      channel_id: channelId,
+      author_id: session.userId,
+      type: reply_to_id ? 'reply' : 'default',
+      reply_to_id: reply_to_id || null,
+    };
+
+    if (encrypted) {
+      // Encrypted message
+      insertData.content = ''; // Empty content for encrypted messages
+      insertData.encrypted_content = encrypted.ct;
+      insertData.encryption_iv = encrypted.iv;
+      insertData.key_version = encrypted.kv;
+      insertData.is_encrypted = true;
+    } else {
+      // Plaintext message (backward compatibility)
+      insertData.content = content?.trim() || '';
+      insertData.is_encrypted = false;
+    }
+
     // Create message
     const { data: insertedMessage, error: messageError } = await supabase
       .from('messages')
-      .insert({
-        channel_id: channelId,
-        author_id: session.userId,
-        content: content?.trim() || '',
-        type: reply_to_id ? 'reply' : 'default',
-        reply_to_id: reply_to_id || null,
-      })
+      .insert(insertData)
       .select('id')
       .single();
 

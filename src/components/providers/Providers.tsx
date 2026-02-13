@@ -6,6 +6,8 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from '@/lib/wagmi';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { CryptoProvider } from '@/contexts/CryptoContext';
+import { CryptoSetupGuard } from '@/components/crypto';
 
 const queryClient = new QueryClient();
 
@@ -31,7 +33,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider theme={theme}>
           <AuthProvider>
-            {mounted ? children : null}
+            <CryptoProvider>
+              <CryptoSetupGuard>
+                {mounted ? children : null}
+              </CryptoSetupGuard>
+            </CryptoProvider>
           </AuthProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

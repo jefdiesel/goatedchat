@@ -77,9 +77,11 @@ export async function POST(
     }
 
     const { channelId } = await params;
-    const { content } = await request.json();
+    const body = await request.json();
+    const { content, encrypted } = body;
 
-    if (!content?.trim()) {
+    // For encrypted messages, content is optional (stored in encrypted_content)
+    if (!encrypted && !content?.trim()) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
@@ -97,14 +99,32 @@ export async function POST(
       return NextResponse.json({ error: 'Not a participant' }, { status: 403 });
     }
 
+    // Build insert data
+    const insertData: Record<string, unknown> = {
+      dm_channel_id: channelId,
+      author_id: session.userId,
+    };
+
+    if (encrypted) {
+      // Encrypted message
+      insertData.content = ''; // Empty content for encrypted messages
+      insertData.encrypted_content = encrypted.ct;
+      insertData.encryption_iv = encrypted.iv;
+      insertData.key_version = encrypted.kv;
+      insertData.is_encrypted = true;
+      if (encrypted.ek) {
+        insertData.sender_ephemeral_key = encrypted.ek;
+      }
+    } else {
+      // Plaintext message (backward compatibility)
+      insertData.content = content.trim();
+      insertData.is_encrypted = false;
+    }
+
     // Create message
     const { data: message, error: messageError } = await supabase
       .from('dm_messages')
-      .insert({
-        dm_channel_id: channelId,
-        author_id: session.userId,
-        content: content.trim(),
-      })
+      .insert(insertData)
       .select(`
         *,
         author:users!author_id (
@@ -117,6 +137,7 @@ export async function POST(
       .single();
 
     if (messageError) {
+      console.error('DM message insert error:', messageError);
       return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
     }
 

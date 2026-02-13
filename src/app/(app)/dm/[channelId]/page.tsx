@@ -5,51 +5,44 @@ import { useParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui/Spinner';
 import { useAuth } from '@/hooks/useAuth';
+import { useEncryptedDM } from '@/hooks/useEncryptedDM';
 import { formatDistanceToNow } from '@/lib/utils';
-
-interface DMMessage {
-  id: string;
-  dm_channel_id: string;
-  author_id: string;
-  content: string;
-  created_at: string;
-  edited_at: string | null;
-  author: {
-    id: string;
-    wallet_address: string;
-    ethscription_name: string | null;
-    avatar_url: string | null;
-  };
-}
+import { EncryptionIndicator } from '@/components/crypto';
 
 export default function DMPage() {
   const params = useParams();
   const channelId = params.channelId as string;
   const { user } = useAuth();
 
-  const [messages, setMessages] = useState<DMMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const fetchMessages = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/dm/${channelId}/messages`);
-      const data = await res.json();
-      setMessages(data.messages || []);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [channelId]);
-
+  // Fetch the other participant's ID
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+    const fetchParticipants = async () => {
+      try {
+        const res = await fetch(`/api/dm/${channelId}`);
+        const data = await res.json();
+        if (data.channel?.participants) {
+          const other = data.channel.participants.find((p: any) => p.user_id !== user?.id);
+          if (other) {
+            setOtherUserId(other.user_id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching participants:', error);
+      }
+    };
+    if (user) {
+      fetchParticipants();
+    }
+  }, [channelId, user]);
+
+  const { messages, loading, sendMessage, isEncryptionReady } = useEncryptedDM(channelId, otherUserId);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,19 +53,10 @@ export default function DMPage() {
 
     setSending(true);
     try {
-      const res = await fetch(`/api/dm/${channelId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: content.trim() }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setMessages(prev => [...prev, data.message]);
-        setContent('');
-        if (textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-        }
+      await sendMessage(content.trim());
+      setContent('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
       }
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -91,8 +75,16 @@ export default function DMPage() {
   return (
     <AppShell>
       <div className="flex-1 flex flex-col">
-        <div className="h-12 px-4 flex items-center border-b border-border">
+        <div className="h-12 px-4 flex items-center justify-between border-b border-border">
           <h1 className="font-semibold">Direct Message</h1>
+          {isEncryptionReady && (
+            <div className="flex items-center gap-1.5 text-[#c3ff00] text-xs">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
+              </svg>
+              <span>Encrypted</span>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
