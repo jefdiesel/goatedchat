@@ -13,39 +13,51 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid tx hash' }, { status: 400 });
     }
 
-    const contentUrl = `https://api.ethscriptions.com/v2/ethscriptions/${txId}/content`;
-    const res = await fetch(contentUrl);
+    // Fetch ethscription metadata to get content_uri
+    const metadataUrl = `https://api.ethscriptions.com/v2/ethscriptions/${txId}`;
+    const res = await fetch(metadataUrl);
 
     if (!res.ok) {
       return NextResponse.json({ error: 'Ethscription not found' }, { status: 404 });
     }
 
-    const contentType = res.headers.get('content-type') || 'application/octet-stream';
+    const data = await res.json();
+    const contentUri = data.content_uri || data.result?.content_uri;
 
-    // Check if it's a data URI (text response)
-    if (contentType.includes('text/') || contentType.includes('application/json')) {
-      const text = await res.text();
-      if (text.startsWith('data:')) {
-        return NextResponse.json({ dataUri: text });
-      }
-      // Return text as-is
-      return new NextResponse(text, {
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000',
-        },
-      });
+    if (!contentUri) {
+      return NextResponse.json({ error: 'No content found' }, { status: 404 });
     }
 
-    // For binary content (images), use arrayBuffer to preserve data
-    const buffer = await res.arrayBuffer();
+    // If it's a data URI, return it directly
+    if (contentUri.startsWith('data:')) {
+      // Parse the data URI to get content type and data
+      const match = contentUri.match(/^data:([^;,]+)?(?:;base64)?,(.*)$/);
+      if (match) {
+        const mimeType = match[1] || 'application/octet-stream';
+        const isBase64 = contentUri.includes(';base64,');
+        const content = match[2];
 
-    return new NextResponse(buffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000',
-      },
-    });
+        if (isBase64) {
+          const buffer = Buffer.from(content, 'base64');
+          return new NextResponse(buffer, {
+            headers: {
+              'Content-Type': mimeType,
+              'Cache-Control': 'public, max-age=31536000',
+            },
+          });
+        } else {
+          return new NextResponse(decodeURIComponent(content), {
+            headers: {
+              'Content-Type': mimeType,
+              'Cache-Control': 'public, max-age=31536000',
+            },
+          });
+        }
+      }
+    }
+
+    // Fallback: return the content URI as JSON
+    return NextResponse.json({ dataUri: contentUri });
   } catch (error) {
     console.error('Ethscription proxy error:', error);
     return NextResponse.json({ error: 'Failed to fetch ethscription' }, { status: 500 });
