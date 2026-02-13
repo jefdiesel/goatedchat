@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useServers } from '@/hooks/useServer';
 import { useAuth } from '@/hooks/useAuth';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -15,6 +16,7 @@ interface ServerSidebarProps {
 }
 
 export function ServerSidebar({ activeServerId }: ServerSidebarProps) {
+  const router = useRouter();
   const { servers, loading } = useServers();
   const { user, signOut } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -80,31 +82,38 @@ export function ServerSidebar({ activeServerId }: ServerSidebarProps) {
         {loading ? (
           <div className="w-12 h-12 rounded-2xl bg-zinc-800 animate-pulse" />
         ) : (
-          servers.map(server => (
-            <Tooltip key={server.id} content={server.name} side="right">
-              <Link
-                href={`/servers/${server.id}`}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:rounded-xl ${
-                  server.id === activeServerId
-                    ? 'bg-[#c3ff00] text-black'
-                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                }`}
-              >
-                {server.icon_url ? (
-                  <img
-                    src={server.icon_url}
-                    alt={server.name}
-                    className="w-full h-full rounded-2xl object-cover"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                ) : (
-                  <span className="text-lg font-semibold">
-                    {server.name.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-              </Link>
-            </Tooltip>
-          ))
+          servers.map(server => {
+            const isActive = server.id === activeServerId;
+            return (
+              <Tooltip key={server.id} content={server.name} side="right">
+                <button
+                  onClick={() => {
+                    if (!isActive) {
+                      router.push(`/servers/${server.id}`);
+                    }
+                  }}
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:rounded-xl ${
+                    isActive
+                      ? 'bg-[#c3ff00] text-black'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                  }`}
+                >
+                  {server.icon_url ? (
+                    <img
+                      src={server.icon_url}
+                      alt={server.name}
+                      className="w-full h-full rounded-2xl object-cover"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  ) : (
+                    <span className="text-lg font-semibold">
+                      {server.name.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </button>
+              </Tooltip>
+            );
+          })
         )}
 
         <div className="w-8 h-px bg-border my-1" />
