@@ -7,6 +7,10 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Channel } from '@/hooks/useChannel';
 
+interface ExtendedChannel extends Channel {
+  entropy_enabled?: boolean;
+}
+
 interface ChannelSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +37,7 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(channel.name);
   const [isPrivate, setIsPrivate] = useState(channel.is_private);
+  const [entropyEnabled, setEntropyEnabled] = useState(false);
   const [iconPreview, setIconPreview] = useState<string | null>(channel.icon_url);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [ethscriptionId, setEthscriptionId] = useState('');
@@ -40,6 +45,20 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Fetch entropy state when modal opens
+  useEffect(() => {
+    if (isOpen && channel.id) {
+      fetch(`/api/channels/${channel.id}/entropy`)
+        .then(res => res.json())
+        .then(data => {
+          setEntropyEnabled(data.entropy_enabled || false);
+        })
+        .catch(() => {
+          setEntropyEnabled(false);
+        });
+    }
+  }, [isOpen, channel.id]);
 
   // Reset form when channel changes
   useEffect(() => {
@@ -127,6 +146,13 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
         const data = await res.json();
         throw new Error(data.error || 'Failed to update channel');
       }
+
+      // Update entropy mode separately
+      await fetch(`/api/channels/${channel.id}/entropy`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entropy_enabled: entropyEnabled }),
+      });
 
       onUpdate();
       onClose();
@@ -243,6 +269,31 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
           <div>
             <span className="text-sm font-medium">Private Channel</span>
             <p className="text-xs text-zinc-500">Only selected members can see this channel</p>
+          </div>
+        </label>
+
+        {/* Entropy Mode Toggle */}
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+              entropyEnabled ? 'bg-red-500 border-red-500' : 'border-zinc-600'
+            }`}
+          >
+            {entropyEnabled && (
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+          <input
+            type="checkbox"
+            checked={entropyEnabled}
+            onChange={e => setEntropyEnabled(e.target.checked)}
+            className="sr-only"
+          />
+          <div>
+            <span className="text-sm font-medium text-red-400">Entropy Mode</span>
+            <p className="text-xs text-zinc-500">Messages decay over time. The tower always falls.</p>
           </div>
         </label>
 

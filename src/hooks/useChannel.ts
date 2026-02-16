@@ -11,6 +11,7 @@ export interface Channel {
   is_private: boolean;
   parent_id: string | null;
   icon_url: string | null;
+  entropy_enabled?: boolean;
   created_at: string;
 }
 

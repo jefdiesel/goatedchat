@@ -60,9 +60,16 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact, onReply
     return acc;
   }, {} as Record<string, { count: number; hasReacted: boolean }>) || {};
 
+  // Entropy corruption state
+  const isCorrupted = message._isCorrupted || false;
+  const corruptionLevel = message._corruptionLevel || 0;
+  const isHeavilyCorrupted = corruptionLevel > 0.5;
+
   return (
     <div
-      className={`relative flex gap-4 px-2 py-0.5 hover:bg-zinc-800/30 rounded ${isGrouped ? 'mt-0' : 'mt-4'}`}
+      className={`relative flex gap-4 px-2 py-0.5 hover:bg-zinc-800/30 rounded ${isGrouped ? 'mt-0' : 'mt-4'} ${
+        isCorrupted ? 'entropy-corrupted-message' : ''
+      } ${isHeavilyCorrupted ? 'entropy-noise' : ''}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
@@ -136,7 +143,9 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact, onReply
             </div>
           </div>
         ) : (
-          <div className="text-zinc-100 break-words whitespace-pre-wrap">
+          <div className={`text-zinc-100 break-words whitespace-pre-wrap relative ${
+            isHeavilyCorrupted ? 'opacity-90' : ''
+          }`}>
             <ReactMarkdown
               components={{
                 img: (props) => {
@@ -169,6 +178,13 @@ export function Message({ message, isGrouped, onEdit, onDelete, onReact, onReply
             </ReactMarkdown>
             {message.edited_at && (
               <span className="text-xs text-zinc-500 ml-1">(edited)</span>
+            )}
+            {/* Scanlines overlay for heavily corrupted messages */}
+            {isHeavilyCorrupted && (
+              <div
+                className="absolute inset-0 entropy-scanlines pointer-events-none"
+                style={{ opacity: Math.min(0.3, corruptionLevel * 0.4) }}
+              />
             )}
           </div>
         )}

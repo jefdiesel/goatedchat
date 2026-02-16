@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/siwe';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getMessageSendDecay, getMessageSendCorruptionIncrement, TOWER_MIN } from '@/lib/entropy';
 
 // GET - Fetch messages for a channel
 export async function GET(
@@ -121,7 +122,7 @@ export async function POST(
     // Get channel and verify membership
     const { data: channel } = await supabase
       .from('channels')
-      .select('server_id')
+      .select('server_id, entropy_enabled')
       .eq('id', channelId)
       .single();
 
@@ -184,6 +185,28 @@ export async function POST(
           filename: a.filename,
         }))
       );
+    }
+
+    // Hidden entropy acceleration: sending messages accelerates decay
+    if (channel.entropy_enabled) {
+      const { data: entropyState } = await supabase
+        .from('channel_entropy_state')
+        .select('integrity_tower, corruption_pass')
+        .eq('channel_id', channelId)
+        .single();
+
+      if (entropyState && entropyState.integrity_tower > TOWER_MIN) {
+        const decay = getMessageSendDecay();
+        const corruptionIncrement = getMessageSendCorruptionIncrement();
+
+        await supabase
+          .from('channel_entropy_state')
+          .update({
+            integrity_tower: Math.max(TOWER_MIN, entropyState.integrity_tower - decay),
+            corruption_pass: entropyState.corruption_pass + corruptionIncrement,
+          })
+          .eq('channel_id', channelId);
+      }
     }
 
     // Fetch the complete message with all relations (separate query for self-referential join)

@@ -2,13 +2,23 @@
 
 import { Channel } from '@/hooks/useChannel';
 import { useAppShell } from '@/components/layout/AppShell';
+import { IntegrityTower } from '@/components/entropy';
 
 interface ChannelHeaderProps {
   channel: Channel | null;
   loading: boolean;
+  entropyEnabled?: boolean;
+  integrityPercent?: number;
+  isDestroyed?: boolean;
 }
 
-export function ChannelHeader({ channel, loading }: ChannelHeaderProps) {
+export function ChannelHeader({
+  channel,
+  loading,
+  entropyEnabled,
+  integrityPercent = 100,
+  isDestroyed,
+}: ChannelHeaderProps) {
   const { showMembers, setShowMembers } = useAppShell();
 
   return (
@@ -35,6 +45,11 @@ export function ChannelHeader({ channel, loading }: ChannelHeaderProps) {
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Integrity Tower - only show when entropy is enabled */}
+      {entropyEnabled && (
+        <IntegrityTower percent={integrityPercent} isDestroyed={isDestroyed} />
+      )}
 
       {/* Toggle members sidebar */}
       <button

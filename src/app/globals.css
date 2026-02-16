@@ -59,3 +59,123 @@ body {
   background: var(--accent);
   color: #000000;
 }
+
+/* Entropy Mode Effects */
+
+/* Glitch character styling */
+.entropy-glitch-char {
+  animation: entropy-glitch-color 2s ease-in-out infinite;
+  text-shadow: 0 0 2px currentColor;
+}
+
+@keyframes entropy-glitch-color {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  75% {
+    opacity: 0.9;
+  }
+}
+
+/* Flicker effect for low integrity */
+@keyframes entropy-flicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  20% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  60% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.85;
+  }
+}
+
+/* Shake effect for critical integrity */
+@keyframes entropy-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1px);
+  }
+  75% {
+    transform: translateX(1px);
+  }
+}
+
+/* Scanlines overlay */
+.entropy-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.3) 2px,
+    rgba(0, 0, 0, 0.3) 4px
+  );
+  pointer-events: none;
+}
+
+/* CRT-style noise effect for very corrupted messages */
+.entropy-noise {
+  position: relative;
+}
+
+.entropy-noise::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* Corrupted message container styling */
+.entropy-corrupted-message {
+  position: relative;
+}
+
+.entropy-corrupted-message::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(239, 68, 68, 0.3) 20%,
+    rgba(239, 68, 68, 0.5) 50%,
+    rgba(239, 68, 68, 0.3) 80%,
+    transparent 100%
+  );
+  animation: entropy-decay-bar 3s ease-in-out infinite;
+}
+
+@keyframes entropy-decay-bar {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}

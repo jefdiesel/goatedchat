@@ -5,6 +5,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { useCrypto } from '@/contexts/CryptoContext';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { EncryptedMessage } from '@/lib/crypto';
+import { applyCorruption, normalizeAge } from '@/lib/entropy';
 
 export interface Message {
   id: string;
@@ -49,9 +50,21 @@ export interface Message {
   // Client-side decryption state
   _decrypted?: boolean;
   _decryptionFailed?: boolean;
+  // Entropy corruption state
+  _corruptionLevel?: number;
+  _isCorrupted?: boolean;
 }
 
-export function useEncryptedMessages(channelId: string | null) {
+export interface EntropyParams {
+  enabled: boolean;
+  corruptionPass: number;
+  globalPressure: number;
+}
+
+export function useEncryptedMessages(
+  channelId: string | null,
+  entropyParams?: EntropyParams
+) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
@@ -111,6 +124,35 @@ export function useEncryptedMessages(channelId: string | null) {
     return Promise.all(msgs.map(decryptMessage));
   }, [decryptMessage]);
 
+  // Apply entropy corruption to a message (client-side, after decryption)
+  const applyEntropyCorruption = useCallback((message: Message): Message => {
+    if (!entropyParams?.enabled || message._decryptionFailed) {
+      return message;
+    }
+
+    const messageAge = normalizeAge(message.created_at);
+    const corruption = applyCorruption(
+      message.content,
+      message.id,
+      entropyParams.corruptionPass,
+      messageAge,
+      entropyParams.globalPressure
+    );
+
+    return {
+      ...message,
+      content: corruption.text,
+      _corruptionLevel: corruption.corruptionLevel,
+      _isCorrupted: corruption.corruptionLevel > 0,
+    };
+  }, [entropyParams]);
+
+  // Apply corruption to all messages
+  const applyCorruptionToMessages = useCallback((msgs: Message[]): Message[] => {
+    if (!entropyParams?.enabled) return msgs;
+    return msgs.map(applyEntropyCorruption);
+  }, [entropyParams, applyEntropyCorruption]);
+
   const fetchMessages = useCallback(async (before?: string) => {
     if (!channelId) {
       setMessages([]);
@@ -147,6 +189,9 @@ export function useEncryptedMessages(channelId: string | null) {
         newMessages = await decryptMessages(newMessages);
       }
 
+      // Apply entropy corruption (client-side, after decryption)
+      newMessages = applyCorruptionToMessages(newMessages);
+
       if (before) {
         setMessages(prev => [...newMessages, ...prev]);
       } else {
@@ -159,7 +204,7 @@ export function useEncryptedMessages(channelId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [channelId, isReady, initializeChannelKey, decryptMessages]);
+  }, [channelId, isReady, initializeChannelKey, decryptMessages, applyCorruptionToMessages]);
 
   // Initial fetch and realtime subscription
   useEffect(() => {
@@ -191,6 +236,9 @@ export function useEncryptedMessages(channelId: string | null) {
               if (isReady && newMsg.is_encrypted) {
                 newMsg = await decryptMessage(newMsg);
               }
+
+              // Apply entropy corruption
+              newMsg = applyEntropyCorruption(newMsg);
 
               setMessages(prev => {
                 if (prev.some(m => m.id === newMsg.id)) return prev;
@@ -236,7 +284,14 @@ export function useEncryptedMessages(channelId: string | null) {
         channel.unsubscribe();
       };
     }
-  }, [channelId, fetchMessages, isReady, decryptMessage]);
+  }, [channelId, fetchMessages, isReady, decryptMessage, applyEntropyCorruption]);
+
+  // Re-apply corruption when entropy params change (e.g., corruption pass advances)
+  useEffect(() => {
+    if (!entropyParams?.enabled) return;
+
+    setMessages(prev => prev.map(applyEntropyCorruption));
+  }, [entropyParams?.corruptionPass, entropyParams?.enabled, applyEntropyCorruption]);
 
   const sendMessage = useCallback(async (
     content: string,
@@ -276,11 +331,14 @@ export function useEncryptedMessages(channelId: string | null) {
       message = await decryptMessage(message);
     }
 
+    // Apply entropy corruption
+    message = applyEntropyCorruption(message);
+
     // Optimistically add message
     setMessages(prev => [...prev, message]);
 
     return message;
-  }, [channelId, isReady, encryptChannelMessage, decryptMessage]);
+  }, [channelId, isReady, encryptChannelMessage, decryptMessage, applyEntropyCorruption]);
 
   const editMessage = useCallback(async (messageId: string, content: string) => {
     const res = await fetch(`/api/messages/${messageId}`, {
