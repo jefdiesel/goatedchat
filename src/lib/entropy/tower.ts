@@ -25,17 +25,14 @@ export function calculateDecayRate(
   elapsedMinutes: number,
   currentIntegrity: number
 ): number {
-  // Base decay: 1 point per 30 minutes (much slower)
-  const baseDecayPerMinute = 1 / 30;
+  // Base decay: 1 point per 60 minutes (1 hour per point = ~2.25 days to collapse)
+  const baseDecayPerMinute = 1 / 60;
 
-  // Pressure multiplier
+  // Pressure multiplier (very subtle)
   const pressure = calculateGlobalPressure(messageCount);
 
-  // Decay accelerates as tower gets lower (entropy snowball) - reduced effect
-  const integrityFactor = 1 + ((TOWER_MAX - currentIntegrity) / TOWER_MAX) * 0.2;
-
   // Calculate total decay
-  const decay = baseDecayPerMinute * elapsedMinutes * pressure * integrityFactor;
+  const decay = baseDecayPerMinute * elapsedMinutes * (0.5 + pressure * 0.5);
 
   return Math.max(0, decay);
 }

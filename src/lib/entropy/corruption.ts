@@ -39,17 +39,16 @@ function calculateCorruptionChance(
   messageAge: number, // in minutes
   globalPressure: number, // 0-1 based on message count
   corruptionPass: number,
-  baseRate: number = 0.005
+  baseRate: number = 0.01
 ): number {
-  // Formula: base_rate + age_factor + pass_factor
-  // Age factor: older messages corrupt faster
-  const ageFactor = Math.pow(Math.max(0, messageAge), 1.2) * 0.01;
-  // Pass factor: each corruption pass increases chance
-  const passFactor = corruptionPass * 0.005;
-  // Pressure factor: more messages = faster corruption
-  const pressureFactor = globalPressure * 0.1;
+  // Pass is the main driver - each tick adds corruption
+  // At pass 10: 10% chance, pass 50: 50% chance, pass 100: capped at 95%
+  const passFactor = corruptionPass * 0.01;
 
-  return Math.min(0.95, baseRate + ageFactor + passFactor + pressureFactor);
+  // Age bonus: older messages get +1% per minute
+  const ageFactor = Math.min(0.3, messageAge * 0.01);
+
+  return Math.min(0.95, baseRate + passFactor + ageFactor);
 }
 
 // Apply corruption to a single character
