@@ -9,13 +9,13 @@ export const TOWER_MIN = 0;
 // More messages = faster decay
 export function calculateGlobalPressure(messageCount: number): number {
   // Pressure scales logarithmically with message count
-  // Base pressure at 0 messages: 0.1
-  // 10 messages: ~0.33
-  // 100 messages: ~0.56
-  // 1000 messages: ~0.79
-  const basePressure = 0.1;
-  const scaleFactor = 0.1;
-  return Math.min(1, basePressure + (Math.log10(Math.max(1, messageCount)) * scaleFactor));
+  // Base pressure at 0 messages: 0.05
+  // 10 messages: ~0.1
+  // 100 messages: ~0.15
+  // 1000 messages: ~0.2
+  const basePressure = 0.05;
+  const scaleFactor = 0.05;
+  return Math.min(0.5, basePressure + (Math.log10(Math.max(1, messageCount)) * scaleFactor));
 }
 
 // Calculate how much the tower should decay this tick
@@ -25,14 +25,14 @@ export function calculateDecayRate(
   elapsedMinutes: number,
   currentIntegrity: number
 ): number {
-  // Base decay: 1 point per 3 minutes (18 ticks at 3s each)
-  const baseDecayPerMinute = 1 / 3;
+  // Base decay: 1 point per 30 minutes (much slower)
+  const baseDecayPerMinute = 1 / 30;
 
   // Pressure multiplier
   const pressure = calculateGlobalPressure(messageCount);
 
-  // Decay accelerates as tower gets lower (entropy snowball)
-  const integrityFactor = 1 + ((TOWER_MAX - currentIntegrity) / TOWER_MAX) * 0.5;
+  // Decay accelerates as tower gets lower (entropy snowball) - reduced effect
+  const integrityFactor = 1 + ((TOWER_MAX - currentIntegrity) / TOWER_MAX) * 0.2;
 
   // Calculate total decay
   const decay = baseDecayPerMinute * elapsedMinutes * pressure * integrityFactor;
@@ -66,7 +66,7 @@ export function isTowerFallen(integrity: number): boolean {
 // Get decay amount from sending a message (hidden mechanic)
 // Each message sent accelerates the tower's fall
 export function getMessageSendDecay(): number {
-  return 1; // Each message costs 1 integrity point
+  return 0.1; // Each message costs 0.1 integrity point (10 messages = 1 point)
 }
 
 // Get corruption pass increment from sending a message (hidden mechanic)
