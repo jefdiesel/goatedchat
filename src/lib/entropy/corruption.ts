@@ -37,18 +37,25 @@ function stringToSeed(str: string): number {
 // Calculate corruption probability for a character
 function calculateCorruptionChance(
   messageAge: number, // in minutes
-  globalPressure: number, // 0-1 based on message count
-  corruptionPass: number,
-  baseRate: number = 0.01
+  globalPressure: number, // based on message count (higher = more messages)
+  corruptionPass: number, // overall channel decay state
+  baseRate: number = 0.005
 ): number {
-  // Pass is the main driver - each tick adds corruption
-  // At pass 10: 10% chance, pass 50: 50% chance, pass 100: capped at 95%
-  const passFactor = corruptionPass * 0.01;
+  // Core formula: time × messages
+  // messageAge: how old this specific message is
+  // globalPressure: scales with total message count in channel
+  // corruptionPass: cumulative channel decay
 
-  // Age bonus: older messages get +1% per minute
-  const ageFactor = Math.min(0.3, messageAge * 0.01);
+  // Age factor: older messages decay more (1% per 10 minutes of age)
+  const ageFactor = messageAge * 0.001;
 
-  return Math.min(0.95, baseRate + passFactor + ageFactor);
+  // Channel decay: corruptionPass × pressure (more messages = faster effect)
+  // At pass 100 with pressure 0.2: 100 * 0.2 * 0.002 = 4%
+  // At pass 100 with pressure 0.5: 100 * 0.5 * 0.002 = 10%
+  const decayFactor = corruptionPass * globalPressure * 0.002;
+
+  // Combined: old messages in busy channels with high pass = high corruption
+  return Math.min(0.95, baseRate + ageFactor + decayFactor);
 }
 
 // Apply corruption to a single character

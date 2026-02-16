@@ -9,12 +9,14 @@ export const TOWER_MIN = 0;
 // More messages = faster decay
 export function calculateGlobalPressure(messageCount: number): number {
   // Pressure scales logarithmically with message count
-  // Base pressure at 0 messages: 0.05
-  // 10 messages: ~0.1
-  // 100 messages: ~0.15
-  // 1000 messages: ~0.2
-  const basePressure = 0.05;
-  const scaleFactor = 0.05;
+  // 1 message: 0.1
+  // 10 messages: 0.2
+  // 50 messages: 0.27
+  // 100 messages: 0.3
+  // 500 messages: 0.37
+  // 1000 messages: 0.4
+  const basePressure = 0.1;
+  const scaleFactor = 0.1;
   return Math.min(0.5, basePressure + (Math.log10(Math.max(1, messageCount)) * scaleFactor));
 }
 
@@ -25,14 +27,15 @@ export function calculateDecayRate(
   elapsedMinutes: number,
   currentIntegrity: number
 ): number {
-  // Base decay: 1 point per 60 minutes (1 hour per point = ~2.25 days to collapse)
-  const baseDecayPerMinute = 1 / 60;
-
-  // Pressure multiplier (very subtle)
+  // Decay scales with time × message pressure
+  // Base: 1 point per 30 min with 1 message
+  // With 100 messages (pressure 0.3): 1 point per 10 min
+  // With 1000 messages (pressure 0.4): 1 point per 7.5 min
+  const baseDecayPerMinute = 1 / 30;
   const pressure = calculateGlobalPressure(messageCount);
 
-  // Calculate total decay
-  const decay = baseDecayPerMinute * elapsedMinutes * (0.5 + pressure * 0.5);
+  // Multiply by pressure - more messages = faster tower fall
+  const decay = baseDecayPerMinute * elapsedMinutes * pressure;
 
   return Math.max(0, decay);
 }
