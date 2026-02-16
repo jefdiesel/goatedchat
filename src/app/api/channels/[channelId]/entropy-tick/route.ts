@@ -90,15 +90,18 @@ export async function POST(
       state.integrity_tower
     );
 
-    // Apply decay
-    const newIntegrity = Math.max(TOWER_MIN, Math.floor(state.integrity_tower - decay));
+    // Apply decay - only drop a point when decay >= 0.5
+    const newIntegrity = Math.max(TOWER_MIN, Math.round(state.integrity_tower - decay));
     const newCorruptionPass = state.corruption_pass + 1;
+
+    // Only update tower if it actually changed (decay was significant enough)
+    const towerChanged = newIntegrity !== state.integrity_tower;
 
     // Update state
     const { data: updatedState, error: updateError } = await supabase
       .from('channel_entropy_state')
       .update({
-        integrity_tower: newIntegrity,
+        integrity_tower: towerChanged ? newIntegrity : state.integrity_tower,
         corruption_pass: newCorruptionPass,
         last_decay_tick: new Date().toISOString(),
       })

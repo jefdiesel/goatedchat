@@ -28,7 +28,7 @@ interface UseEntropyChannelResult {
   toggleEntropy: (enabled: boolean) => Promise<void>;
 }
 
-const TICK_INTERVAL = 3000; // 3 seconds
+const TICK_INTERVAL = 30000; // 30 seconds
 
 export function useEntropyChannel(
   channelId: string | null,

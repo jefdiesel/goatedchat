@@ -28,10 +28,10 @@ export function calculateDecayRate(
   currentIntegrity: number
 ): number {
   // Decay scales with time × message pressure
-  // Base: 1 point per 30 min with 1 message
-  // With 100 messages (pressure 0.3): 1 point per 10 min
-  // With 1000 messages (pressure 0.4): 1 point per 7.5 min
-  const baseDecayPerMinute = 1 / 30;
+  // Base: 1 point per 2 hours with few messages
+  // With 100 messages (pressure 0.3): 1 point per 40 min
+  // With 1000 messages (pressure 0.4): 1 point per 30 min
+  const baseDecayPerMinute = 1 / 120; // 1 point per 2 hours base
   const pressure = calculateGlobalPressure(messageCount);
 
   // Multiply by pressure - more messages = faster tower fall
@@ -66,7 +66,7 @@ export function isTowerFallen(integrity: number): boolean {
 // Get decay amount from sending a message (hidden mechanic)
 // Each message sent accelerates the tower's fall
 export function getMessageSendDecay(): number {
-  return 0.1; // Each message costs 0.1 integrity point (10 messages = 1 point)
+  return 0.01; // Each message costs 0.01 integrity point (100 messages = 1 point)
 }
 
 // Get corruption pass increment from sending a message (hidden mechanic)
