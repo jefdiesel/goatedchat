@@ -43,6 +43,7 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
   const [ethscriptionId, setEthscriptionId] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resettingEntropy, setResettingEntropy] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -160,6 +161,28 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
       setError(err?.message || 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetEntropy = async () => {
+    setResettingEntropy(true);
+    setError('');
+
+    try {
+      const res = await fetch(`/api/channels/${channel.id}/entropy/reset`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to reset entropy');
+      }
+
+      onUpdate();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to reset');
+    } finally {
+      setResettingEntropy(false);
     }
   };
 
@@ -296,6 +319,19 @@ export function ChannelSettingsModal({ isOpen, onClose, channel, serverId, onUpd
             <p className="text-xs text-zinc-500">Messages decay over time. The tower always falls.</p>
           </div>
         </label>
+
+        {/* Entropy Reset Button */}
+        {entropyEnabled && (
+          <div className="pl-8">
+            <button
+              onClick={handleResetEntropy}
+              disabled={resettingEntropy}
+              className="text-sm text-zinc-400 hover:text-[#c3ff00] disabled:opacity-50"
+            >
+              {resettingEntropy ? 'Resetting...' : 'Reset tower to 100%'}
+            </button>
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-400">{error}</p>}
 
